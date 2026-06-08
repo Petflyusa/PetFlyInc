@@ -16,7 +16,7 @@ if (file_exists(__DIR__ . '/../.env')) {
 }
 
 class SupabaseDB {
-    public $pdo;
+    public $pdo = null;
     public $connect_error = null;
     public $insert_id = null;
     public $error = null;
@@ -28,8 +28,13 @@ class SupabaseDB {
         $user = getenv('SUPABASE_DB_USER') ?: 'postgres';
         $pass = getenv('SUPABASE_DB_PASSWORD') ?: 'xlhKE3GnjJxkpd8v';
 
+        $sslmode = getenv('SUPABASE_DB_SSLMODE') ?: 'require';
+        if (($host === 'localhost' || $host === '127.0.0.1') && !getenv('SUPABASE_DB_SSLMODE')) {
+            $sslmode = 'disable';
+        }
+
         try {
-            $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
+            $dsn = "pgsql:host=$host;port=$port;dbname=$dbname;sslmode=$sslmode";
             $this->pdo = new PDO($dsn, $user, $pass, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -46,6 +51,7 @@ class SupabaseDB {
     }
 
     private function initializeSchema() {
+        if (!$this->pdo) return;
         try {
             $stmt = $this->pdo->query("SELECT to_regclass('public.country_regulations')");
             $exists = $stmt->fetchColumn();
@@ -63,9 +69,13 @@ class SupabaseDB {
 
     public function query($sql) {
         $this->error = null;
+        $is_select = preg_match('/^\s*(select|show|describe|explain)\s/i', $sql);
+        
+        if (!$this->pdo) {
+            $this->error = "Database connection not established: " . $this->connect_error;
+            return $is_select ? new SupabaseDB_result([]) : false;
+        }
         try {
-            // Check if it's select
-            $is_select = preg_match('/^\s*(select|show|describe|explain)\s/i', $sql);
             if ($is_select) {
                 $stmt = $this->pdo->query($sql);
                 return new SupabaseDB_result($stmt->fetchAll());
@@ -78,18 +88,22 @@ class SupabaseDB {
             }
         } catch (PDOException $e) {
             $this->error = $e->getMessage();
-            return false;
+            return $is_select ? new SupabaseDB_result([]) : false;
         }
     }
 
     public function prepare($sql) {
         $this->error = null;
+        if (!$this->pdo) {
+            $this->error = "Database connection not established: " . $this->connect_error;
+            return new SupabaseDB_stmt(null, $this);
+        }
         try {
             $stmt = $this->pdo->prepare($sql);
             return new SupabaseDB_stmt($stmt, $this);
         } catch (PDOException $e) {
             $this->error = $e->getMessage();
-            return false;
+            return new SupabaseDB_stmt(null, $this);
         }
     }
 
@@ -98,6 +112,7 @@ class SupabaseDB {
     }
 
     public function lastInsertId() {
+        if (!$this->pdo) return null;
         return $this->pdo->lastInsertId();
     }
 }
@@ -118,6 +133,7 @@ class SupabaseDB_stmt {
     }
 
     public function execute() {
+        if (!$this->stmt) return false;
         try {
             // Bind parameters and execute
             $res = $this->stmt->execute($this->params);
@@ -135,12 +151,13 @@ class SupabaseDB_stmt {
     }
 
     public function get_result() {
+        if (!$this->stmt) return new SupabaseDB_result([]);
         try {
             $rows = $this->stmt->fetchAll();
             return new SupabaseDB_result($rows);
         } catch (PDOException $e) {
             $this->parent->error = $e->getMessage();
-            return false;
+            return new SupabaseDB_result([]);
         }
     }
 
