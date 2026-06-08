@@ -3,10 +3,7 @@
    PetFly USA Admin Panel
    ===================================================== */
 
-$db_host = 'srv1294.hstgr.io';
-$db_user = 'u727344629_petfly';
-$db_pass = 'Jz10191019@@';
-$db_name = 'u727344629_petfly';
+require_once __DIR__ . '/db.php';
 $admin_password = 'admin123';
 
 session_start();
@@ -62,7 +59,7 @@ button:hover{background:#2c4a6e}
     exit;
 }
 
-$conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
+$conn = new SupabaseDB();
 
 /* =====================================================
    API HANDLERS

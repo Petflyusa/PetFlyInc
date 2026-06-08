@@ -1,12 +1,7 @@
 <?php
-$db_host = 'srv1294.hstgr.io';
-$db_user = 'u727344629_petfly';
-$db_pass = 'Jz10191019@@';
-$db_name = 'u727344629_petfly';
-
+require_once __DIR__ . '/db.php';
 header('Content-Type: application/json');
-
-$conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
+$conn = new SupabaseDB();
 
 if (isset($_GET['id'])) {
     $id = intval($_GET['id']);

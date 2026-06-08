@@ -6,21 +6,16 @@ if (!verifyHoneypot()) {
     exit;
 }
 
-// Database configuration
-$db_host = 'srv1294.hstgr.io';
-$db_user = 'u727344629_petfly';
-$db_pass = 'Jz10191019@@';
-$db_name = 'u727344629_petfly';
-
 // Email configuration
 $admin_email = 'info@petflyusa.com';
 $site_name = 'PetFly USA';
 
 // Connect to database
-$conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
+require_once __DIR__ . '/db.php';
+$conn = new SupabaseDB();
 
 if ($conn->connect_error) {
-    die(json_encode(['success' => false, 'message' => 'Database connection failed']));
+    die(json_encode(['success' => false, 'message' => 'Database connection failed: ' . $conn->connect_error]));
 }
 
 // Get form data

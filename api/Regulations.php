@@ -2,12 +2,8 @@
 $pageTitle = 'Pet Transport Regulations — PetFly USA';
 include 'header.php';
 
-$db_host = 'srv1294.hstgr.io';
-$db_user = 'u727344629_petfly';
-$db_pass = 'Jz10191019@@';
-$db_name = 'u727344629_petfly';
-
-$conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
+require_once __DIR__ . '/db.php';
+$conn = new SupabaseDB();
 $countries = $conn->query("SELECT * FROM country_regulations ORDER BY country_name");
 $airlines = $conn->query("SELECT * FROM airline_regulations ORDER BY airline_name");
 $conn->close();

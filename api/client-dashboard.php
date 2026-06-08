@@ -7,12 +7,8 @@ if (!isset($_SESSION['client_id'])) {
     exit;
 }
 
-$db_host = 'srv1294.hstgr.io';
-$db_user = 'u727344629_petfly';
-$db_pass = 'Jz10191019@@';
-$db_name = 'u727344629_petfly';
-
-$conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
+require_once __DIR__ . '/db.php';
+$conn = new SupabaseDB();
 $client_id = $_SESSION['client_id'];
 $client_name = $_SESSION['client_name'];
 
