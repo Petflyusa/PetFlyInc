@@ -1,6 +1,10 @@
 <?php
 session_start();
 
+function verifyHoneypot() {
+    return empty($_POST['fax_only']) && empty($_POST['email_addr']);
+}
+
 if (!verifyHoneypot()) {
     echo json_encode(['success' => false, 'message' => 'Submission blocked.']);
     exit;
@@ -19,17 +23,17 @@ if ($conn->connect_error) {
 }
 
 // Get form data
-$pet_type = $_POST['petType'] ?? '';
-$pet_name = $_POST['petName'] ?? '';
-$pet_weight = $_POST['petWeight'] ?? '';
+$pet_type = $_POST['pet_type'] ?? '';
+$pet_name = $_POST['pet_name'] ?? '';
+$pet_weight = $_POST['pet_weight'] ?? '';
 $breed = $_POST['breed'] ?? '';
-$origin_country = $_POST['originCountry'] ?? '';
-$origin_city = $_POST['originCity'] ?? '';
-$dest_country = $_POST['destCountry'] ?? '';
-$dest_city = $_POST['destCity'] ?? '';
-$travel_date = $_POST['travelDate'] ?? '';
-$transport_type = $_POST['transportType'] ?? '';
-$contact_name = $_POST['contactName'] ?? '';
+$origin_country = $_POST['origin_country'] ?? '';
+$origin_city = $_POST['origin_city'] ?? '';
+$dest_country = $_POST['dest_country'] ?? '';
+$dest_city = $_POST['dest_city'] ?? '';
+$travel_date = $_POST['travel_date'] ?? '';
+$transport_type = $_POST['transport_type'] ?? '';
+$contact_name = $_POST['contact_name'] ?? '';
 $email = $_POST['email'] ?? '';
 $phone = $_POST['phone'] ?? '';
 $referral = $_POST['referral'] ?? '';

@@ -1,6 +1,10 @@
 <?php
 session_start();
 
+function verifyHoneypot() {
+    return empty($_POST['fax_only']) && empty($_POST['email_addr']);
+}
+
 if (!verifyHoneypot()) {
     echo json_encode(['success' => false, 'message' => 'Submission blocked.']);
     exit;
