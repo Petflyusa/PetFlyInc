@@ -22,14 +22,32 @@ class SupabaseDB {
     public $error = null;
 
     public function __construct() {
-        $host = getenv('SUPABASE_DB_HOST') ?: 'aws-0-us-east-2.pooler.supabase.com';
-        $port = getenv('SUPABASE_DB_PORT') ?: '6543';
+        $host = getenv('SUPABASE_DB_HOST') ?: 'db.usdbyomrcjxdxgwfzwkc.supabase.co';
+        $port = getenv('SUPABASE_DB_PORT') ?: '5432';
         $dbname = getenv('SUPABASE_DB_NAME') ?: 'postgres';
-        $user = getenv('SUPABASE_DB_USER') ?: 'postgres.usdbyomrcjxdxgwfzwkc';
+        $user = getenv('SUPABASE_DB_USER') ?: 'postgres';
         $pass = getenv('SUPABASE_DB_PASSWORD') ?: 'xlhKE3GnjJxkpd8v';
 
         $sslmode = getenv('SUPABASE_DB_SSLMODE') ?: 'require';
-        if (($host === 'localhost' || $host === '127.0.0.1') && !getenv('SUPABASE_DB_SSLMODE')) {
+        
+        // Auto-disable SSL if connecting to localhost, 127.0.0.1, or local sandbox/private IPs
+        $is_local = false;
+        if ($host === 'localhost' || $host === '127.0.0.1' || $host === '::1') {
+            $is_local = true;
+        } else {
+            $resolved_ip = filter_var($host, FILTER_VALIDATE_IP) ? $host : @gethostbyname($host);
+            if ($resolved_ip) {
+                if (strpos($resolved_ip, '127.') === 0 || 
+                    strpos($resolved_ip, '198.18.') === 0 || 
+                    strpos($resolved_ip, '10.') === 0 || 
+                    strpos($resolved_ip, '192.168.') === 0 ||
+                    preg_match('/^172\.(1[6-9]|2[0-9]|3[0-1])\./', $resolved_ip)) {
+                    $is_local = true;
+                }
+            }
+        }
+
+        if ($is_local && !getenv('SUPABASE_DB_SSLMODE')) {
             $sslmode = 'disable';
         }
 
