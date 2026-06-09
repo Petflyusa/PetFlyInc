@@ -274,7 +274,7 @@ if (isset($_GET['action'])) {
         case 'get_unread_count':
             $cid = intval($_GET['client_id'] ?? 0);
             $r = $conn->query("SELECT COUNT(*) as c FROM client_messages WHERE client_id=$cid AND is_read=0 AND sender='client'")->fetch_assoc();
-            echo json_encode(['count'=>$r['c']]);
+            echo json_encode(['count'=>$r ? $r['c'] : 0]);
             break;
 
     }
@@ -286,14 +286,22 @@ if (isset($_GET['action'])) {
 /* =====================================================
    STATS & DATA
    ===================================================== */
+$q_res = $conn->query("SELECT COUNT(*) as c FROM quote_requests")->fetch_assoc();
+$c_res = $conn->query("SELECT COUNT(*) as c FROM contact_messages")->fetch_assoc();
+$co_res = $conn->query("SELECT COUNT(*) as c FROM country_regulations")->fetch_assoc();
+$a_res = $conn->query("SELECT COUNT(*) as c FROM airline_regulations")->fetch_assoc();
+$cl_res = $conn->query("SELECT COUNT(*) as c FROM clients")->fetch_assoc();
+$pt_res = $conn->query("SELECT COUNT(*) as c FROM client_pets")->fetch_assoc();
+$s_res = $conn->query("SELECT COUNT(*) as c FROM client_services")->fetch_assoc();
+
 $stats = [
-    'quotes'   => $conn->query("SELECT COUNT(*) as c FROM quote_requests")->fetch_assoc()['c'],
-    'contacts' => $conn->query("SELECT COUNT(*) as c FROM contact_messages")->fetch_assoc()['c'],
-    'countries'=> $conn->query("SELECT COUNT(*) as c FROM country_regulations")->fetch_assoc()['c'],
-    'airlines' => $conn->query("SELECT COUNT(*) as c FROM airline_regulations")->fetch_assoc()['c'],
-    'clients'  => $conn->query("SELECT COUNT(*) as c FROM clients")->fetch_assoc()['c'],
-    'pets'     => $conn->query("SELECT COUNT(*) as c FROM client_pets")->fetch_assoc()['c'],
-    'services' => $conn->query("SELECT COUNT(*) as c FROM client_services")->fetch_assoc()['c'],
+    'quotes'   => $q_res ? $q_res['c'] : 0,
+    'contacts' => $c_res ? $c_res['c'] : 0,
+    'countries'=> $co_res ? $co_res['c'] : 0,
+    'airlines' => $a_res ? $a_res['c'] : 0,
+    'clients'  => $cl_res ? $cl_res['c'] : 0,
+    'pets'     => $pt_res ? $pt_res['c'] : 0,
+    'services' => $s_res ? $s_res['c'] : 0,
 ];
 
 $quote_rows = $conn->query("SELECT * FROM quote_requests ORDER BY created_at DESC");
