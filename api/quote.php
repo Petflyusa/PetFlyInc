@@ -47,15 +47,13 @@ function submitQuoteForm(event) {
 </script>
 
   <!-- PAGE HEADER -->
-  <section class="page-header">
-    <video class="page-header-video" autoplay muted loop playsinline>
-      <source src="quotehero.mp4" type="video/mp4">
-    </video>
+  <section class="page-header" style="color: var(--cream);">
+    <img class="page-header-video" src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=1600&q=80" alt="Pet Travel Background" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; z-index: 0;">
     <div class="page-header-overlay"></div>
     <div class="container">
       <span class="section-label">Transport Quote</span>
-      <h1>Request your<br>personalised quote.</h1>
-      <p>Fill in the details below and we'll respond within 24 hours with a tailored plan for your pet's journey.</p>
+      <h1 style="color: var(--cream);">Request your<br>personalised quote.</h1>
+      <p style="color: rgba(247, 245, 240, 0.75);">Fill in the details below and we'll respond within 24 hours with a tailored plan for your pet's journey.</p>
     </div>
   </section>
 
