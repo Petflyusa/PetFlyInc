@@ -22,10 +22,10 @@ class SupabaseDB {
     public $error = null;
 
     public function __construct() {
-        $host = getenv('SUPABASE_DB_HOST') ?: 'db.usdbyomrcjxdxgwfzwkc.supabase.co';
-        $port = getenv('SUPABASE_DB_PORT') ?: '5432';
+        $host = getenv('SUPABASE_DB_HOST') ?: 'aws-0-us-east-2.pooler.supabase.com';
+        $port = getenv('SUPABASE_DB_PORT') ?: '6543';
         $dbname = getenv('SUPABASE_DB_NAME') ?: 'postgres';
-        $user = getenv('SUPABASE_DB_USER') ?: 'postgres';
+        $user = getenv('SUPABASE_DB_USER') ?: 'postgres.usdbyomrcjxdxgwfzwkc';
         $pass = getenv('SUPABASE_DB_PASSWORD') ?: 'xlhKE3GnjJxkpd8v';
 
         $sslmode = getenv('SUPABASE_DB_SSLMODE') ?: 'require';
