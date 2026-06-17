@@ -87,7 +87,7 @@ This email was sent from $site_name website.
 ";
     
     // Send email notification
-    mail($admin_email, $subject, $message);
+    @mail($admin_email, $subject, $message);
     
     echo json_encode(['success' => true, 'message' => 'Quote request submitted successfully!']);
 } else {

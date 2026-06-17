@@ -64,7 +64,7 @@ This email was sent from $site_name website.
 ";
     
     // Send email notification
-    mail($admin_email, $email_subject, $email_message);
+    @mail($admin_email, $email_subject, $email_message);
     
     echo json_encode(['success' => true, 'message' => 'Message sent successfully!']);
 } else {
