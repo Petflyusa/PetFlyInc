@@ -29,24 +29,10 @@ class SupabaseDB {
         $pass = getenv('SUPABASE_DB_PASSWORD') ?: 'xlhKE3GnjJxkpd8v';
         $sslmode = getenv('SUPABASE_DB_SSLMODE');
 
-        // Check if we are running in the local sandbox/development environment
-        // The local sandbox DNS resolver maps the direct host to 198.18.0.42
-        $resolved_ip = @gethostbyname('db.usdbyomrcjxdxgwfzwkc.supabase.co');
-        $is_sandbox = ($resolved_ip && strpos($resolved_ip, '198.18.') === 0);
-
-        if ($is_sandbox) {
-            // Local Sandbox settings (Direct connection, no SSL required)
-            if (!$host) $host = 'db.usdbyomrcjxdxgwfzwkc.supabase.co';
-            if (!$port) $port = '5432';
-            if (!$user) $user = 'postgres';
-            if (!$sslmode) $sslmode = 'disable';
-        } else {
-            // Production/Vercel settings (Connection Pooler via IPv4, SSL required)
-            if (!$host) $host = 'aws-0-us-east-2.pooler.supabase.com';
-            if (!$port) $port = '6543';
-            if (!$user) $user = 'postgres.usdbyomrcjxdxgwfzwkc';
-            if (!$sslmode) $sslmode = 'require';
-        }
+        if (!$host) $host = 'aws-1-us-east-2.pooler.supabase.com';
+        if (!$port) $port = '6543';
+        if (!$user) $user = 'postgres.usdbyomrcjxdxgwfzwkc';
+        if (!$sslmode) $sslmode = 'require';
 
         try {
             $dsn = "pgsql:host=$host;port=$port;dbname=$dbname;sslmode=$sslmode";
