@@ -4,7 +4,7 @@ const session = require('express-session');
 const MySQLStore = require('express-mysql-session')(session);
 const helmet = require('helmet');
 const compression = require('compression');
-const multer = require('multer');
+const multerModule = require('multer');
 const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
@@ -12,6 +12,10 @@ const mysql = require('mysql2/promise');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// View engine
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
 
 // ── Database Pool ─────────────────────────────────────────────────────────
 const pool = mysql.createPool({
@@ -68,16 +72,14 @@ app.use(session({
 const uploadDir = path.join(__dirname, 'public/uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    const safe = Date.now() + '-' + Math.round(Math.random() * 1e9) + ext;
-    cb(null, safe);
-  }
-});
-const upload = multer({
-  storage,
+const upload = multerModule({
+  storage: multerModule.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadDir),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase();
+      cb(null, Date.now() + '-' + Math.round(Math.random() * 1e9) + ext);
+    }
+  }),
   limits: { fileSize: Number(process.env.MAX_FILE_SIZE) || 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowed = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf'];
@@ -266,7 +268,6 @@ app.post('/admin/login', async (req, res) => {
 app.get('/admin/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/admin/login'));
 });
-req.session?.destroy?.();
 
 app.get('/admin/me', (req, res) => {
   res.json({ loggedIn: !!(req.session && req.session.adminId) });
