@@ -125,7 +125,13 @@ function submitLogin(event) {
     err.style.display = 'none';
 
     var fd = new FormData(document.getElementById('loginForm'));
-    fetch('/admin/login', {method: 'POST', body: fd})
+    var obj = {};
+    fd.forEach(function(v, k) { obj[k] = v; });
+    fetch('/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(obj)
+    })
     .then(function(r) { return r.json(); })
     .then(function(d) {
         if (d.success) {
