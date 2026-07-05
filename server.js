@@ -262,7 +262,7 @@ app.post('/admin/login', async (req, res) => {
     await query('UPDATE admins SET last_login = NOW() WHERE id = ?', [admin.id]);
 
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ success: false, error: 'Server error.' }); }
+  } catch (err) { console.error('LOGIN ERROR:', err); res.status(500).json({ success: false, error: 'Server error.' }); }
 });
 
 app.get('/admin/logout', (req, res) => {
