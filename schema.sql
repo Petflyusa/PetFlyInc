@@ -6,6 +6,14 @@
 CREATE DATABASE IF NOT EXISTS u884869254_petflyinc CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE u884869254_petflyinc;
 
+-- ── Sessions (express-mysql-session) ────────────────────────
+CREATE TABLE IF NOT EXISTS sessions (
+  session_id VARCHAR(128) COLLATE utf8mb3_bin NOT NULL,
+  expires INT UNSIGNED NOT NULL,
+  data MEDIUMTEXT COLLATE utf8mb3_bin,
+  PRIMARY KEY (session_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin;
+
 -- ── Admins ─────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS admins (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
