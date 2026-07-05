@@ -3,8 +3,8 @@
 -- Run this against your Hostinger MySQL database
 -- ============================================================
 
-CREATE DATABASE IF NOT EXISTS petflyinc CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE petflyinc;
+CREATE DATABASE IF NOT EXISTS u884869254_petflyinc CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE u884869254_petflyinc;
 
 -- ── Admins ─────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS admins (
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS admins (
 
 -- Default admin: admin / petfly2026 (change password immediately)
 INSERT INTO admins (username, password_hash) VALUES
-('admin', '$2b$10$KQZ8k.N3hZ9Y5Xz5Xz5XzOuserIAuthHashHere')
+('admin', '$2a$10$81kZZJY7e1Wr2LIbn1DYnuJ1mfPRYWvEJo/A797jsIWoRn/jk5fua')
 ON DUPLICATE KEY UPDATE username=username;
 
 -- ── Quote Requests ─────────────────────────────────────────
