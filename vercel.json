@@ -1,21 +1,22 @@
 {
-  "functions": {
-    "api/**/*.php": {
-      "runtime": "vercel-php@0.9.0"
-    }
-  },
-  "rewrites": [
+  "version": 2,
+  "builds": [
     {
-      "source": "/(.*)\\.php",
-      "destination": "/api/$1.php"
+      "src": "server.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/admin/public/(.*)",
+      "dest": "/public/$1"
     },
     {
-      "source": "/",
-      "destination": "/api/index.php"
-    },
-    {
-      "source": "/((?!api/|css/|.*\\.css|.*\\.js|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.gif|.*\\.svg|.*\\.ico|.*\\.mp4|.*\\.php$).*)",
-      "destination": "/api/$1.php"
+      "src": "/(.*)",
+      "dest": "/server.js"
     }
-  ]
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  }
 }

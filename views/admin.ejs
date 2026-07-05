@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel — Pet Fly Inc</title>
+  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div id="adminApp">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <i class="fas fa-paw"></i> Pet Fly Admin
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-btn active" data-section="dashboard" onclick="showSection('dashboard')">
+        <i class="fas fa-th-large"></i> Dashboard
+      </button>
+      <button class="nav-btn" data-section="quotes" onclick="showSection('quotes')">
+        <i class="fas fa-file-invoice"></i> Quote Requests
+        <span class="badge" id="badgeQuotes">0</span>
+      </button>
+      <button class="nav-btn" data-section="contacts" onclick="showSection('contacts')">
+        <i class="fas fa-envelope"></i> Contact Messages
+        <span class="badge" id="badgeContacts">0</span>
+      </button>
+      <button class="nav-btn" data-section="content" onclick="showSection('content')">
+        <i class="fas fa-edit"></i> Landing Content
+      </button>
+      <button class="nav-btn" data-section="countries" onclick="showSection('countries')">
+        <i class="fas fa-globe"></i> Countries
+      </button>
+      <button class="nav-btn" data-section="airlines" onclick="showSection('airlines')">
+        <i class="fas fa-plane"></i> Airlines
+      </button>
+    </nav>
+    <div class="sidebar-bottom">
+      <a href="/" class="sidebar-link"><i class="fas fa-external-link-alt"></i> View Site</a>
+      <button class="sidebar-link" onclick="logout()" style="background:none;border:none;cursor:pointer;color:rgba(247,245,240,0.5);font-family:inherit;font-size:inherit;">
+        <i class="fas fa-sign-out-alt"></i> Logout
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <!-- Dashboard -->
+    <section id="section-dashboard" class="admin-section active">
+      <div class="section-header">
+        <h1>Dashboard</h1>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-icon" style="background:#f5f0e8;color:#c4622d;"><i class="fas fa-file-invoice"></i></div>
+          <div>
+            <div class="stat-num" id="dashQuotes">0</div>
+            <div class="stat-lbl">Total Quotes</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:#f5f0e8;color:#c4622d;"><i class="fas fa-clock"></i></div>
+          <div>
+            <div class="stat-num" id="dashPending">0</div>
+            <div class="stat-lbl">Pending</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:#f5f0e8;color:#c4622d;"><i class="fas fa-envelope"></i></div>
+          <div>
+            <div class="stat-num" id="dashContacts">0</div>
+            <div class="stat-lbl">Messages</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:#f5f0e8;color:#c4622d;"><i class="fas fa-check-circle"></i></div>
+          <div>
+            <div class="stat-num" id="dashCompleted">0</div>
+            <div class="stat-lbl">Completed</div>
+          </div>
+        </div>
+      </div>
+      <div class="recent-section">
+        <h2>Recent Quote Requests</h2>
+        <div id="recentQuotes"></div>
+      </div>
+    </section>
+
+    <!-- Quote Requests -->
+    <section id="section-quotes" class="admin-section">
+      <div class="section-header">
+        <h1>Quote Requests</h1>
+        <button class="btn-outline" onclick="loadQuotes()"><i class="fas fa-sync"></i> Refresh</button>
+      </div>
+      <div id="quotesTable"></div>
+    </section>
+
+    <!-- Contact Messages -->
+    <section id="section-contacts" class="admin-section">
+      <div class="section-header">
+        <h1>Contact Messages</h1>
+        <button class="btn-outline" onclick="loadContacts()"><i class="fas fa-sync"></i> Refresh</button>
+      </div>
+      <div id="contactsTable"></div>
+    </section>
+
+    <!-- Landing Content -->
+    <section id="section-content" class="admin-section">
+      <div class="section-header">
+        <h1>Landing Page Content</h1>
+        <button class="btn-primary-sm" onclick="saveLandingContent()"><i class="fas fa-save"></i> Save All Changes</button>
+      </div>
+      <div id="landingContentEditor"></div>
+    </section>
+
+    <!-- Countries -->
+    <section id="section-countries" class="admin-section">
+      <div class="section-header">
+        <h1>Country Regulations</h1>
+        <button class="btn-primary-sm" onclick="addCountry()"><i class="fas fa-plus"></i> Add Country</button>
+      </div>
+      <div id="countriesTable"></div>
+    </section>
+
+    <!-- Airlines -->
+    <section id="section-airlines" class="admin-section">
+      <div class="section-header">
+        <h1>Airline Regulations</h1>
+        <button class="btn-primary-sm" onclick="addAirline()"><i class="fas fa-plus"></i> Add Airline</button>
+      </div>
+      <div id="airlinesTable"></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Modal -->
+<div id="modal" class="modal" style="display:none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="modalTitle">Modal</h2>
+      <button onclick="closeModal()" style="background:none;border:none;cursor:pointer;font-size:1.25rem;color:rgba(247,245,240,0.5);"><i class="fas fa-times"></i></button>
+    </div>
+    <div id="modalBody" class="modal-body"></div>
+  </div>
+</div>
+
+<script src="/admin/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,140 @@
+<%- include('partials/header', { currentPage: 'index' }) %>
+
+<% const h = content.hero || {eyebrow:'International Pet Transport',headline:'Where Every\nJourney\nCounts.',subheading:'Safe passage for your most precious companions — to 15+ countries, with IATA & USDA certified care at every mile.',cta_text:'Request a Quote'}; %>
+<% const s = content.stats || []; %>
+<% const svcs = content.services || []; %>
+<% const ab = content.about || {text:"We don't just transport pets. We shepherd them safely across oceans and continents — with precision, care, and unwavering attention."}; %>
+<% const offs = content.offices || [{city:'Los Angeles',country:'California, USA',type:'Headquarters'},{city:'Shanghai',country:'China',type:''},{city:'Beijing',country:'China',type:''}]; %>
+<% const ft = content.footer || {email:'info@petflyinc.com',phone:'+1 (555) 123-4567',hours:'Mon—Fri: 9AM — 6PM PST'}; %>
+<% const cta = content.cta || {headline:'Ready to begin your pet\'s journey?',sub:'Request a quote and we\'ll respond within 24 hours.',button_text:'Request a Quote'}; %>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-fallback"></div>
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <div class="container">
+        <span class="hero-eyebrow"><%= h.eyebrow %></span>
+        <h1><%- h.headline.replace(/\n/g,'<br>') %></h1>
+        <p class="hero-sub"><%= h.subheading %></p>
+        <a href="/quote" class="hero-cta">
+          <%= h.cta_text || 'Request a Quote' %> <i class="fas fa-arrow-right" style="font-size:0.7rem;"></i>
+        </a>
+      </div>
+    </div>
+    <div class="hero-scroll">Scroll</div>
+  </section>
+
+  <!-- INTRO STATEMENT -->
+  <section class="section" style="padding-top: var(--space-xl); padding-bottom: var(--space-xl);">
+    <div class="container">
+      <div style="display: grid; grid-template-columns: 1fr 2.5fr; gap: var(--space-lg); align-items: start;">
+        <div>
+          <span class="section-label">About</span>
+        </div>
+        <div>
+          <p style="font-family: var(--font-serif); font-size: clamp(1.5rem, 2.5vw, 2.25rem); line-height: 1.4; color: var(--charcoal); max-width: 28ch; letter-spacing: -0.01em;">
+            <%= ab.text.replace(/\n/g,'<br>') %>
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATS BAR -->
+  <div class="stats-bar">
+    <div class="container">
+      <div class="stats-grid">
+        <% s.forEach(stat => { %>
+          <div class="stat-item">
+            <div class="stat-number"><%= stat.number %></div>
+            <div class="stat-label"><%= stat.label %></div>
+          </div>
+        <% }); %>
+      </div>
+    </div>
+  </div>
+
+  <!-- SERVICES -->
+  <section class="section" style="padding-top: var(--space-xl);">
+    <div class="container">
+      <div class="section-header-left">
+        <span class="section-label">What We Do</span>
+        <h2 class="section-title">Our Services</h2>
+      </div>
+      <div class="services-grid">
+        <% svcs.forEach(svc => { %>
+          <div class="service-item">
+            <div class="service-icon"><i class="fas <%= svc.icon %>"></i></div>
+            <h3><%= svc.title %></h3>
+            <p><%= svc.desc %></p>
+          </div>
+        <% }); %>
+      </div>
+    </div>
+  </section>
+
+  <!-- EDITORIAL CONTENT BLOCK -->
+  <section class="section section-lg" style="padding-top: var(--space-2xl);">
+    <div class="container">
+      <div class="content-block">
+        <div class="content-block__text">
+          <span class="section-label">The Process</span>
+          <h2>Simple steps to global peace of mind</h2>
+          <p>We strip away the complexity of international pet transport. From initial consultation to final delivery, every step is planned with precision and executed with care.</p>
+          <ul class="feature-list">
+            <li>Initial assessment & route planning</li>
+            <li>Documentation preparation & review</li>
+            <li>Container consultation & delivery</li>
+            <li>Airport handling & customs clearance</li>
+            <li>Door-to-door delivery at destination</li>
+          </ul>
+          <a href="/service" style="display: inline-flex; align-items: center; gap: 0.5rem; margin-top: var(--space-md); font-size: 0.8125rem; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid var(--charcoal); padding-bottom: 2px; transition: opacity 0.2s;">
+            Learn More <i class="fas fa-arrow-right" style="font-size: 0.7rem;"></i>
+          </a>
+        </div>
+        <div class="content-block__media">
+          <img src="https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=900&q=80" alt="Pet transport" loading="lazy">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- OFFICES SECTION -->
+  <section class="section" style="background: var(--cream); padding: var(--space-2xl) 0;">
+    <div class="container">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-xl);">
+        <div>
+          <span class="section-label">Global Presence</span>
+          <h2 class="section-title" style="max-width: 16ch;">Our offices around the world</h2>
+        </div>
+        <div style="display: flex; flex-direction: column; justify-content: flex-end;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-md);">
+            <% offs.forEach(off => { %>
+              <div class="contact-office" style="border: none; padding: 0;">
+                <h3 style="font-size: 0.9375rem; color: var(--charcoal);"><%= off.city %></h3>
+                <address style="font-size: 0.875rem; color: var(--text-muted);"><%= off.country %></address>
+                <% if (off.type) { %>
+                  <p style="font-size: 0.8125rem; color: var(--accent); margin-top: 0.25rem;"><%= off.type %></p>
+                <% } %>
+              </div>
+            <% }); %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA SECTION -->
+  <section class="cta-section">
+    <div class="container">
+      <span class="section-label">Get Started</span>
+      <h2><%= cta.headline %></h2>
+      <p><%= cta.sub %></p>
+      <a href="/quote" class="btn-primary" style="display: inline-flex; width: auto; text-decoration: none;">
+        <%= cta.button_text %> <i class="fas fa-arrow-right" style="font-size: 0.7rem;"></i>
+      </a>
+    </div>
+  </section>
+
+<%- include('partials/footer', { footer: ft }) %>

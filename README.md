@@ -1,95 +1,100 @@
-# PetFly USA Website - Deployment Package
+# Pet Fly Inc — Node.js Website
 
-## 📦 Package Contents
+International pet transportation landing page + admin panel. IATA & USDA certified.
 
-```
-├── header.php          # Site header (navigation)
-├── footer.php          # Site footer
-├── index.php           # Homepage
-├── service.php         # Services page
-├── quote.php           # Quote request page
-├── contact.php         # Contact page
-├── Regulations.php     # Import/export regulations
-├── admin.php           # Admin panel
-├── client-login.php    # Client login
-├── client-dashboard.php # Client dashboard
-├── process-quote.php   # Quote form processor
-├── process-contact.php # Contact form processor
-├── get_regulation.php  # Regulations API
-├── captcha.php         # CAPTCHA generator
-├── client-logout.php   # Logout handler
-├── style-v2.css        # Main stylesheet (v2, CDN-busted)
-└── style.css           # Legacy stylesheet
-```
+## Quick Start
 
-## 🖥️ Server Requirements
-
-- PHP 7.4+ (with GD extension for CAPTCHA)
-- MySQL 5.7+ or MariaDB 10.3+
-- Apache/Nginx with mod_rewrite enabled
-
-## 🚀 Deployment Steps
-
-### 1. Upload Files
-Upload all files to your web server's document root (e.g., `/var/www/html/` or `/home/user/public_html/`)
-
-### 2. Database Setup
-Create a MySQL database and import the schema:
-
-```sql
-CREATE DATABASE petflyusa CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
-
-Update database connection in relevant PHP files (admin.php, client-dashboard.php, etc.)
-
-### 3. Configuration
-Edit the following files to update database credentials:
-
-- `admin.php` - search for `$conn = new mysqli(...)` section
-- `client-dashboard.php`
-- `client-login.php`
-- `process-contact.php`
-- `process-quote.php`
-
-Default credentials (update these):
-- Host: localhost
-- Database: u727344629_petflyusa
-- User: your_db_user
-- Password: your_db_password
-
-### 4. Permissions
 ```bash
-chmod 644 *.php *.css
-chmod 755 . # web root
+npm install
+cp .env.example .env
+# Fill in DB_* values in .env
+mysql -u root -p < schema.sql   # set up the database
+npm start
 ```
 
-### 5. Web Server Config
+Visit `http://localhost:3000`
 
-**Apache (.htaccess)** - if using Apache:
-```apache
-RewriteEngine On
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^([^\.]+)$ $1.php [NC,L]
+- **Landing pages:** `/`, `/service`, `/quote`, `/contact`, `/regulations`
+- **Admin panel:** `/admin` (login: `admin` / `petfly2026` — change this immediately)
+
+## Project Structure
+
+```
+PetFlyInc-node/
+├── server.js           Express app entry point
+├── package.json
+├── schema.sql          MySQL database schema + seed data
+├── .env.example        Environment variables template
+├── vercel.json         Vercel deployment config
+├── public/
+│   ├── css/
+│   │   ├── style.css   Landing page stylesheet
+│   │   └── admin.css   Admin panel stylesheet
+│   ├── admin/
+│   │   └── app.js      Admin SPA JavaScript
+│   └── uploads/        User-uploaded files
+├── admin/
+│   └── app.js          Admin SPA (public serve)
+├── views/
+│   ├── index.ejs
+│   ├── service.ejs
+│   ├── quote.ejs
+│   ├── contact.ejs
+│   ├── regulations.ejs
+│   ├── admin.ejs       Admin panel shell
+│   ├── admin-login.ejs
+│   └── partials/
+│       ├── header.ejs
+│       └── footer.ejs
 ```
 
-**Nginx** - add to server block:
-```nginx
-location / {
-    try_files $uri $uri/ $uri.php?$query_string;
-}
+## Database
+
+Requires MySQL 5.7+ (or MariaDB 10.3+). Run `schema.sql` to create all tables and seed default content.
+
+Tables:
+- `admins` — admin login accounts
+- `quote_requests` — quote form submissions
+- `contact_messages` — contact form submissions
+- `countries` — country import regulations
+- `airlines` — airline pet transport policies
+- `landing_content` — key/value JSON for landing page sections
+
+## Admin Panel
+
+Manage landing page content, view/manage quote requests and contact messages, add/edit country and airline regulations — all from a single-page admin SPA at `/admin`.
+
+## Deployment (Vercel)
+
+```bash
+npm install
+vercel
 ```
 
-## 🔑 Admin Access
-- URL: `/admin.php`
-- Default password: `admin123` (change this!)
+Set environment variables in Vercel dashboard:
+- `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
+- `SESSION_SECRET`
+- `NODE_ENV=production`
 
-## 🎨 Design Info
-- **Style**: Magazine editorial, asymmetric, restrained
-- **Palette**: Cream (#F7F5F0), Warm-white (#FDFCFA), Warm-gray, Charcoal (#2A2723)
-- **Fonts**: Playfair Display (headings) + DM Sans (body)
-- **Latest CSS**: style-v2.css (already linked in PHP files)
+## Deployment (Hostinger VPS)
 
-## 📁 Original Hostinger Server
-- SSH: ssh -p 65002 u727344629@89.116.192.166
-- Path: /home/u727344629/domains/petflyusa.com/public_html/
+```bash
+# SSH into your VPS
+cd ~/petflyinc
+git pull
+npm install --production
+mysql -u root -p < schema.sql
+pm2 restart server   # or: node server.js
+```
+
+Recommended: use PM2 for process management:
+```bash
+npm install -g pm2
+pm2 start server.js --name petflyinc
+pm2 save
+pm2 startup
+```
+
+## CRM Integration
+
+The CRM lives in `/crm` on the Hostinger server (deployed separately from `crm-recovered` repo). The CRM is accessible at `https://petflyinc.com/CRM`.
