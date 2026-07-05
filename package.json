@@ -5,7 +5,10 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "build": "echo 'No build step required'",
+    "build:crm": "echo 'No CRM build'",
+    "postinstall": "echo 'deps installed'"
   },
   "engines": {
     "node": ">=18.0.0"
