@@ -15,9 +15,9 @@ CREATE TABLE IF NOT EXISTS admins (
   last_login TIMESTAMP NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Default admin: admin / petfly2026 (change password immediately)
+-- Default admin: petflyusa / Jz10191019 (change password immediately)
 INSERT INTO admins (username, password_hash) VALUES
-('admin', '$2a$10$81kZZJY7e1Wr2LIbn1DYnuJ1mfPRYWvEJo/A797jsIWoRn/jk5fua')
+('petflyusa', '$2a$10$81kZZJY7e1Wr2LIbn1DYnuJ1mfPRYWvEJo/A797jsIWoRn/jk5fua')
 ON DUPLICATE KEY UPDATE username=username;
 
 -- ── Quote Requests ─────────────────────────────────────────
