@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS admins (
 
 -- Default admin: petflyusa / Jz10191019 (change password immediately)
 INSERT INTO admins (username, password_hash) VALUES
-('petflyusa', '$2a$10$C8ua8xb47vFhsvRXN9pfPebGm73BKz8u0oMwNPDv/gPQfNpsVik3O')
+('petflyusa', '$2a$10$Ac4Ar/jE6Nkwrpvv5sfEZeQqXEzrJabKdb0gIEb.pBQSmexuyKS8e')
 ON DUPLICATE KEY UPDATE username=username;
 
 -- ── Quote Requests ─────────────────────────────────────────
