@@ -324,29 +324,6 @@ app.delete('/api/admin/contacts/:id', requireAdmin, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// TEMP DEBUG — remove after use
-app.get('/debug/db-all', async (req, res) => {
-  const [rows] = await pool.query("SELECT section_key, LENGTH(content) as len FROM landing_content");
-  res.json(rows);
-});
-
-app.post('/debug/save-check', async (req, res) => {
-  // Echo back what would be saved and log it
-  console.log('SAVE CHECK:', JSON.stringify(req.body).substring(0, 300));
-  res.json({ received: req.body, ts: Date.now() });
-});
-
-app.get('/debug/db-section/:key', async (req, res) => {
-  const [rows] = await pool.query("SELECT content FROM landing_content WHERE section_key = ?", [req.params.key]);
-  res.json({ key: req.params.key, content: rows[0]?.content || null });
-});
-
-app.post('/debug/db-cleanup', async (req, res) => {
-  // Remove garbage rows
-  await pool.query("DELETE FROM landing_content WHERE section_key = '__SECTION__'");
-  res.json({ success: true, message: "Cleaned up __SECTION__ row" });
-});
-
 // ── Admin API: Landing Content ─────────────────────────────────────────────
 app.get('/api/admin/landing-content', requireAdmin, async (req, res) => {
   try {
