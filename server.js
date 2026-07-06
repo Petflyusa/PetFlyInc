@@ -265,7 +265,7 @@ app.post('/admin/login', async (req, res) => {
   } catch (err) { console.error('LOGIN ERROR:', err); res.status(500).json({ success: false, error: 'Server error.' }); }
 });
 
-app.get('/admin/logout', (req, res) => {
+app.post('/admin/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/admin/login'));
 });
 
