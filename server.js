@@ -336,6 +336,17 @@ app.post('/debug/save-check', async (req, res) => {
   res.json({ received: req.body, ts: Date.now() });
 });
 
+app.get('/debug/db-section/:key', async (req, res) => {
+  const [rows] = await pool.query("SELECT content FROM landing_content WHERE section_key = ?", [req.params.key]);
+  res.json({ key: req.params.key, content: rows[0]?.content || null });
+});
+
+app.post('/debug/db-cleanup', async (req, res) => {
+  // Remove garbage rows
+  await pool.query("DELETE FROM landing_content WHERE section_key = '__SECTION__'");
+  res.json({ success: true, message: "Cleaned up __SECTION__ row" });
+});
+
 // ── Admin API: Landing Content ─────────────────────────────────────────────
 app.get('/api/admin/landing-content', requireAdmin, async (req, res) => {
   try {

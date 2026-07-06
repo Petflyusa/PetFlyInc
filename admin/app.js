@@ -278,10 +278,10 @@ function renderLandingContent() {
   // Hero
   var h = c.hero || {};
   html += sectionTpl('hero', 'Hero Section', [
-    fieldTpl('text', 'eyebrow', 'Eyebrow Text', h.eyebrow || ''),
-    fieldTpl('textarea', 'headline', 'Headline (use Enter for line breaks)', h.headline || ''),
-    fieldTpl('textarea', 'subheading', 'Subheading', h.subheading || ''),
-    fieldTpl('text', 'cta_text', 'CTA Button Text', h.cta_text || '')
+    fieldTpl('text', 'eyebrow', 'Eyebrow Text', h.eyebrow || '', 'hero'),
+    fieldTpl('textarea', 'headline', 'Headline (use Enter for line breaks)', h.headline || '', 'hero'),
+    fieldTpl('textarea', 'subheading', 'Subheading', h.subheading || '', 'hero'),
+    fieldTpl('text', 'cta_text', 'CTA Button Text', h.cta_text || '', 'hero')
   ]);
 
   // Stats
@@ -301,7 +301,7 @@ function renderLandingContent() {
   // About
   var ab = c.about || {};
   html += sectionTpl('about', 'About Statement', [
-    fieldTpl('textarea', 'text', 'About Text', ab.text || '')
+    fieldTpl('textarea', 'text', 'About Text', ab.text || '', 'about')
   ].join(''));
 
   // Offices
@@ -314,17 +314,17 @@ function renderLandingContent() {
   // CTA
   var cta = c.cta || {};
   html += sectionTpl('cta', 'CTA Section', [
-    fieldTpl('text', 'headline', 'Headline', cta.headline || ''),
-    fieldTpl('textarea', 'sub', 'Sub-text', cta.sub || ''),
-    fieldTpl('text', 'button_text', 'Button Text', cta.button_text || '')
+    fieldTpl('text', 'headline', 'Headline', cta.headline || '', 'cta'),
+    fieldTpl('textarea', 'sub', 'Sub-text', cta.sub || '', 'cta'),
+    fieldTpl('text', 'button_text', 'Button Text', cta.button_text || '', 'cta')
   ].join(''));
 
   // Footer
   var ft = c.footer || {};
   html += sectionTpl('footer', 'Footer', [
-    fieldTpl('text', 'email', 'Email', ft.email || ''),
-    fieldTpl('text', 'phone', 'Phone', ft.phone || ''),
-    fieldTpl('text', 'hours', 'Hours', ft.hours || '')
+    fieldTpl('text', 'email', 'Email', ft.email || '', 'footer'),
+    fieldTpl('text', 'phone', 'Phone', ft.phone || '', 'footer'),
+    fieldTpl('text', 'hours', 'Hours', ft.hours || '', 'footer')
   ].join(''));
 
   el.innerHTML = html;
@@ -344,16 +344,16 @@ function sectionTpl(key, title, body) {
   '</div>';
 }
 
-function fieldTpl(type, name, label, value) {
+function fieldTpl(type, name, label, value, section) {
   if (type === 'textarea') {
     return '<div class="form-group full">' +
       '<label class="field-label">' + label + '</label>' +
-      '<textarea class="field-textarea" data-section="__SECTION__" data-key="' + name + '" rows="3">' + escHtml(value) + '</textarea>' +
+      '<textarea class="field-textarea" data-section="' + section + '" data-key="' + name + '" rows="3">' + escHtml(value) + '</textarea>' +
     '</div>';
   }
   return '<div class="form-group">' +
     '<label class="field-label">' + label + '</label>' +
-    '<input type="text" class="field-input" data-section="__SECTION__" data-key="' + name + '" value="' + escHtml(value) + '">' +
+    '<input type="text" class="field-input" data-section="' + section + '" data-key="' + name + '" value="' + escHtml(value) + '">' +
   '</div>';
 }
 
