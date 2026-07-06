@@ -494,12 +494,21 @@ async function saveLandingContent() {
     c[sec][key] = inp.value;
   });
 
-  // Stats
-  c.stats = getStatsFromDOM();
-  // Services
-  c.services = getServicesFromDOM();
-  // Offices
-  c.offices = getOfficesFromDOM();
+  // Stats — only save if at least one has content
+  var stats = getStatsFromDOM();
+  if (stats.length && stats.some(function(s) { return s.number || s.label; })) {
+    c.stats = stats;
+  }
+  // Services — only save if at least one has content
+  var svcs = getServicesFromDOM();
+  if (svcs.length && svcs.some(function(s) { return s.title || s.desc; })) {
+    c.services = svcs;
+  }
+  // Offices — only save if at least one has content
+  var offs = getOfficesFromDOM();
+  if (offs.length && offs.some(function(o) { return o.city || o.country; })) {
+    c.offices = offs;
+  }
 
   // Save each section
   try {
