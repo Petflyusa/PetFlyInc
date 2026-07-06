@@ -11,11 +11,12 @@ var state = {
 };
 
 var toastTimeout;
+var creds = { credentials: 'include' };
 
 // ── Auth Check ──────────────────────────────────────────────────────────────
 (async function checkAuth() {
   try {
-    var r = await fetch('/admin/me');
+    var r = await fetch('/admin/me', creds);
     var d = await r.json();
     if (!d.loggedIn) { window.location.href = '/admin/login'; }
   } catch {
@@ -60,8 +61,8 @@ function showSection(name) {
 async function loadDashboard() {
   try {
     var [qr, cr] = await Promise.all([
-      fetch('/api/admin/quotes').then(function(r) { return r.json(); }),
-      fetch('/api/admin/contacts').then(function(r) { return r.json(); })
+      fetch('/api/admin/quotes', creds).then(function(r) { return r.json(); }),
+      fetch('/api/admin/contacts', creds).then(function(r) { return r.json(); })
     ]);
     state.quotes = qr.quotes || [];
     state.contacts = cr.contacts || [];
@@ -110,7 +111,7 @@ function renderDashboard() {
 // ── Quotes ─────────────────────────────────────────────────────────────────
 async function loadQuotes() {
   try {
-    var d = await (await fetch('/api/admin/quotes')).json();
+    var d = await (await fetch('/api/admin/quotes', creds)).json();
     state.quotes = d.quotes || [];
     renderQuotes();
   } catch (err) { console.error(err); }
@@ -149,7 +150,7 @@ function renderQuotes() {
 
 async function updateQuoteStatus(id, status) {
   try {
-    await fetch('/api/admin/quotes/' + id, {
+    await fetch('/api/admin/quotes/' + id, { ...creds,
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: status })
@@ -189,7 +190,7 @@ function viewQuote(id) {
 async function deleteQuote(id) {
   if (!confirm('Delete this quote request?')) return;
   try {
-    await fetch('/api/admin/quotes/' + id, { method: 'DELETE' });
+    await fetch('/api/admin/quotes/' + id, { ...creds, method: 'DELETE' });
     showToast('Deleted', 'success');
     loadQuotes();
     loadDashboard();
@@ -199,7 +200,7 @@ async function deleteQuote(id) {
 // ── Contacts ───────────────────────────────────────────────────────────────
 async function loadContacts() {
   try {
-    var d = await (await fetch('/api/admin/contacts')).json();
+    var d = await (await fetch('/api/admin/contacts', creds)).json();
     state.contacts = d.contacts || [];
     renderContacts();
   } catch (err) { console.error(err); }
@@ -246,14 +247,14 @@ function viewContact(id) {
 }
 
 async function markContactRead(id) {
-  await fetch('/api/admin/contacts/' + id, { method: 'PATCH' });
+  await fetch('/api/admin/contacts/' + id, { ...creds, method: 'PATCH' });
   loadContacts();
   loadDashboard();
 }
 
 async function deleteContact(id) {
   if (!confirm('Delete this message?')) return;
-  await fetch('/api/admin/contacts/' + id, { method: 'DELETE' });
+  await fetch('/api/admin/contacts/' + id, { ...creds, method: 'DELETE' });
   showToast('Deleted', 'success');
   loadContacts();
   loadDashboard();
@@ -262,7 +263,7 @@ async function deleteContact(id) {
 // ── Landing Content ─────────────────────────────────────────────────────────
 async function loadLandingContent() {
   try {
-    var d = await (await fetch('/api/admin/landing-content')).json();
+    var d = await (await fetch('/api/admin/landing-content', creds)).json();
     state.content = d.content || {};
     renderLandingContent();
   } catch (err) { console.error(err); }
@@ -386,8 +387,10 @@ function getStatsFromDOM() {
   var labs = document.querySelectorAll('.stat-label');
   var stats = [];
   nums.forEach(function(n, i) {
-    if (n.value.trim() || labs[i].value.trim()) {
-      stats.push({ number: n.value.trim(), label: labs[i].value.trim() });
+    var lab = labs[i];
+    if (!lab) return;
+    if (n.value.trim() || lab.value.trim()) {
+      stats.push({ number: n.value.trim(), label: lab.value.trim() });
     }
   });
   return stats;
@@ -424,15 +427,16 @@ function addService() {
 function getServicesFromDOM() {
   var titles = document.querySelectorAll('.svc-title');
   var descs = document.querySelectorAll('.svc-desc');
-  var icons = document.querySelectorAll('.svc-title'); // workaround — get from selects
-  var svcs = [];
   var sels = document.querySelectorAll('select[data-type="icon"]');
+  var svcs = [];
   titles.forEach(function(t, i) {
-    if (t.value.trim() || descs[i].value.trim()) {
+    var desc = descs[i];
+    if (!desc) return;
+    if (t.value.trim() || desc.value.trim()) {
       svcs.push({
         icon: sels[i] ? sels[i].value : 'fa-plane',
         title: t.value.trim(),
-        desc: descs[i].value.trim()
+        desc: desc.value.trim()
       });
     }
   });
@@ -466,8 +470,11 @@ function getOfficesFromDOM() {
   var countries = document.querySelectorAll('.off-country');
   var types = document.querySelectorAll('.off-type');
   cities.forEach(function(c, i) {
-    if (c.value.trim() || countries[i].value.trim()) {
-      offs.push({ city: c.value.trim(), country: countries[i].value.trim(), type: types[i].value.trim() });
+    var country = countries[i];
+    var type = types[i];
+    if (!country || !type) return;
+    if (c.value.trim() || country.value.trim()) {
+      offs.push({ city: c.value.trim(), country: country.value.trim(), type: type.value.trim() });
     }
   });
   return offs;
@@ -493,7 +500,7 @@ async function saveLandingContent() {
   // Save each section
   try {
     for (var sec in c) {
-      await fetch('/api/admin/landing-content/' + sec, {
+      await fetch('/api/admin/landing-content/' + sec, { ...creds,
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(c[sec])
@@ -587,9 +594,9 @@ async function saveCountry() {
   };
   try {
     if (id) {
-      await fetch('/api/admin/countries/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      await fetch('/api/admin/countries/' + id, { ...creds, method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     } else {
-      await fetch('/api/admin/countries', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      await fetch('/api/admin/countries', { ...creds, method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     }
     closeModal();
     showToast('Country saved', 'success');
@@ -599,7 +606,7 @@ async function saveCountry() {
 
 async function deleteCountry(id) {
   if (!confirm('Delete this country?')) return;
-  await fetch('/api/admin/countries/' + id, { method: 'DELETE' });
+  await fetch('/api/admin/countries/' + id, { ...creds, method: 'DELETE' });
   showToast('Deleted', 'success');
   loadCountries();
 }
@@ -679,9 +686,9 @@ async function saveAirline() {
   };
   try {
     if (id) {
-      await fetch('/api/admin/airlines/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      await fetch('/api/admin/airlines/' + id, { ...creds, method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     } else {
-      await fetch('/api/admin/airlines', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      await fetch('/api/admin/airlines', { ...creds, method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     }
     closeModal();
     showToast('Airline saved', 'success');
@@ -691,7 +698,7 @@ async function saveAirline() {
 
 async function deleteAirline(id) {
   if (!confirm('Delete this airline?')) return;
-  await fetch('/api/admin/airlines/' + id, { method: 'DELETE' });
+  await fetch('/api/admin/airlines/' + id, { ...creds, method: 'DELETE' });
   showToast('Deleted', 'success');
   loadAirlines();
 }
@@ -713,7 +720,7 @@ document.getElementById('modal').addEventListener('click', function(e) {
 
 // ── Logout ─────────────────────────────────────────────────────────────────
 async function logout() {
-  await fetch('/admin/logout', { method: 'POST' });
+  await fetch('/admin/logout', { ...creds, method: 'POST' });
   window.location.href = '/admin/login';
 }
 
