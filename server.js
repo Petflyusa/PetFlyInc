@@ -115,7 +115,6 @@ async function getLandingSection(key) {
 
 async function setLandingSection(key, data) {
   const json = JSON.stringify(data);
-  console.log('setLandingSection', key, '->', json.substring(0, 100));
   await query(
     'INSERT INTO landing_content (section_key, content) VALUES (?, ?) ON DUPLICATE KEY UPDATE content = VALUES(content)',
     [key, json]
@@ -323,31 +322,6 @@ app.delete('/api/admin/contacts/:id', requireAdmin, async (req, res) => {
     await query('DELETE FROM contact_messages WHERE id = ?', [req.params.id]);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// TEMP DEBUG — remove after use
-app.get('/debug/db-stats', async (req, res) => {
-  const [rows] = await pool.query("SELECT section_key, content FROM landing_content WHERE section_key IN ('stats','hero','services','offices')");
-  res.json(rows.map(r => ({ key: r.section_key, content: r.content })));
-});
-
-app.post('/debug/db-stats-fix', async (req, res) => {
-  const fixed = JSON.stringify([
-    {number:'15+', label:'Countries Served'},
-    {number:'8+', label:'Years Experience'},
-    {number:'3', label:'Global Offices'},
-    {number:'500+', label:'Happy Pets'}
-  ]);
-  await pool.query(
-    'INSERT INTO landing_content (section_key, content) VALUES (?, ?) ON DUPLICATE KEY UPDATE content = VALUES(content)',
-    ['stats', fixed]
-  );
-  res.json({ success: true });
-});
-
-app.post('/debug/save-test', async (req, res) => {
-  console.log('DEBUG save-test called, body:', JSON.stringify(req.body).substring(0, 200));
-  res.json({ received: req.body });
 });
 
 // ── Admin API: Landing Content ─────────────────────────────────────────────
