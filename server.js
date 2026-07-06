@@ -324,6 +324,30 @@ app.delete('/api/admin/contacts/:id', requireAdmin, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// TEMP DEBUG - no auth needed (for testing only)
+app.get('/debug/content', async (req, res) => {
+  try {
+    const rows = await query('SELECT section_key, content FROM landing_content');
+    const content = {};
+    rows.forEach(row => {
+      try { content[row.section_key] = JSON.parse(row.content); }
+      catch { content[row.section_key] = row.content; }
+    });
+    res.json({ content });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/debug/content/:section', async (req, res) => {
+  try {
+    const json = JSON.stringify(req.body);
+    await query(
+      'INSERT INTO landing_content (section_key, content) VALUES (?, ?) ON DUPLICATE KEY UPDATE content = VALUES(content)',
+      [req.params.section, json]
+    );
+    res.json({ success: true, section: req.params.section });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ── Admin API: Landing Content ─────────────────────────────────────────────
 app.get('/api/admin/landing-content', requireAdmin, async (req, res) => {
   try {
