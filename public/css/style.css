@@ -152,12 +152,11 @@ button { cursor: pointer; font-family: inherit; }
 .hero-fallback {
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(135deg, #1a1a1a 0%, #2a1f18 50%, #1a1a1a 100%);
   background-image:
-    radial-gradient(ellipse at 70% 50%, rgba(196,98,45,0.18) 0%, transparent 60%),
-    radial-gradient(ellipse at 20% 80%, rgba(196,98,45,0.08) 0%, transparent 50%),
-    linear-gradient(135deg, #1a1a1a 0%, #2a1f18 50%, #1a1a1a 100%);
+    linear-gradient(135deg, rgba(26,26,26,0.7) 0%, rgba(42,31,24,0.5) 50%, rgba(26,26,26,0.7) 100%),
+    url('/images/hero-bg.jpg');
+  background-size: cover;
+  background-position: center;
 }
 .hero-overlay {
   position: absolute;
