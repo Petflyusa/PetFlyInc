@@ -324,6 +324,18 @@ app.delete('/api/admin/contacts/:id', requireAdmin, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// TEMP DEBUG — remove after use
+app.get('/debug/db-all', async (req, res) => {
+  const [rows] = await pool.query("SELECT section_key, LENGTH(content) as len FROM landing_content");
+  res.json(rows);
+});
+
+app.post('/debug/save-check', async (req, res) => {
+  // Echo back what would be saved and log it
+  console.log('SAVE CHECK:', JSON.stringify(req.body).substring(0, 300));
+  res.json({ received: req.body, ts: Date.now() });
+});
+
 // ── Admin API: Landing Content ─────────────────────────────────────────────
 app.get('/api/admin/landing-content', requireAdmin, async (req, res) => {
   try {
