@@ -324,6 +324,12 @@ app.delete('/api/admin/contacts/:id', requireAdmin, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// TEMP DEBUG — remove after use
+app.get('/debug/db-stats', async (req, res) => {
+  const [rows] = await pool.query("SELECT section_key, content FROM landing_content WHERE section_key IN ('stats','hero')");
+  res.json(rows.map(r => ({ key: r.section_key, content: r.content })));
+});
+
 // ── Admin API: Landing Content ─────────────────────────────────────────────
 app.get('/api/admin/landing-content', requireAdmin, async (req, res) => {
   try {
