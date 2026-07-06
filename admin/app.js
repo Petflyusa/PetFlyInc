@@ -495,20 +495,19 @@ async function saveLandingContent() {
     c[sec][key] = inp.value;
   });
 
-  // Stats — only save if at least one has content
+  // Stats — only save if at least one has a number
   var stats = getStatsFromDOM();
-  console.log('stats from DOM:', JSON.stringify(stats));
-  if (stats.length && stats.some(function(s) { return s.number || s.label; })) {
+  if (stats.length && stats.some(function(s) { return s.number; })) {
     c.stats = stats;
   }
-  // Services — only save if at least one has content
+  // Services — only save if at least one has a title
   var svcs = getServicesFromDOM();
-  if (svcs.length && svcs.some(function(s) { return s.title || s.desc; })) {
+  if (svcs.length && svcs.some(function(s) { return s.title; })) {
     c.services = svcs;
   }
-  // Offices — only save if at least one has content
+  // Offices — only save if at least one has a city
   var offs = getOfficesFromDOM();
-  if (offs.length && offs.some(function(o) { return o.city || o.country; })) {
+  if (offs.length && offs.some(function(o) { return o.city; })) {
     c.offices = offs;
   }
 
