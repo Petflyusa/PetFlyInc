@@ -324,25 +324,6 @@ app.delete('/api/admin/contacts/:id', requireAdmin, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// TEMP DEBUG — remove after use
-app.get('/debug/db-stats', async (req, res) => {
-  const [rows] = await pool.query("SELECT section_key, content FROM landing_content WHERE section_key IN ('stats','hero')");
-  res.json(rows.map(r => ({ key: r.section_key, content: r.content })));
-});
-app.post('/debug/db-stats-fix', async (req, res) => {
-  const fixed = JSON.stringify([
-    {number:'15+', label:'Countries Served'},
-    {number:'8+', label:'Years Experience'},
-    {number:'3', label:'Global Offices'},
-    {number:'500+', label:'Happy Pets'}
-  ]);
-  await pool.query(
-    'INSERT INTO landing_content (section_key, content) VALUES (?, ?) ON DUPLICATE KEY UPDATE content = VALUES(content)',
-    ['stats', fixed]
-  );
-  res.json({ success: true, restored: fixed });
-});
-
 // ── Admin API: Landing Content ─────────────────────────────────────────────
 app.get('/api/admin/landing-content', requireAdmin, async (req, res) => {
   try {
