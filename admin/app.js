@@ -383,14 +383,14 @@ function addStat() {
 }
 
 function getStatsFromDOM() {
-  var nums = document.querySelectorAll('.stat-num');
-  var labs = document.querySelectorAll('.stat-label');
+  var nums = Array.from(document.querySelectorAll('.stat-num'));
+  var labs = Array.from(document.querySelectorAll('.stat-label'));
   var stats = [];
   nums.forEach(function(n, i) {
     var lab = labs[i];
     if (!lab) return;
-    if (n.value.trim() || lab.value.trim()) {
-      stats.push({ number: n.value.trim(), label: lab.value.trim() });
+    if ((n.value || '').trim() || (lab.value || '').trim()) {
+      stats.push({ number: (n.value || '').trim(), label: (lab.value || '').trim() });
     }
   });
   return stats;
@@ -425,18 +425,20 @@ function addService() {
 }
 
 function getServicesFromDOM() {
-  var titles = document.querySelectorAll('.svc-title');
-  var descs = document.querySelectorAll('.svc-desc');
-  var sels = document.querySelectorAll('select[data-type="icon"]');
+  var titles = Array.from(document.querySelectorAll('.svc-title'));
+  var descs = Array.from(document.querySelectorAll('.svc-desc'));
+  var sels = Array.from(document.querySelectorAll('select[data-type="icon"]'));
   var svcs = [];
   titles.forEach(function(t, i) {
     var desc = descs[i];
     if (!desc) return;
-    if (t.value.trim() || desc.value.trim()) {
+    var titleVal = (t.value || '').trim();
+    var descVal = (desc.value || '').trim();
+    if (titleVal || descVal) {
       svcs.push({
         icon: sels[i] ? sels[i].value : 'fa-plane',
-        title: t.value.trim(),
-        desc: desc.value.trim()
+        title: titleVal,
+        desc: descVal
       });
     }
   });
@@ -466,15 +468,17 @@ function addOffice() {
 
 function getOfficesFromDOM() {
   var offs = [];
-  var cities = document.querySelectorAll('.off-city');
-  var countries = document.querySelectorAll('.off-country');
-  var types = document.querySelectorAll('.off-type');
+  var cities = Array.from(document.querySelectorAll('.off-city'));
+  var countries = Array.from(document.querySelectorAll('.off-country'));
+  var types = Array.from(document.querySelectorAll('.off-type'));
   cities.forEach(function(c, i) {
     var country = countries[i];
     var type = types[i];
     if (!country || !type) return;
-    if (c.value.trim() || country.value.trim()) {
-      offs.push({ city: c.value.trim(), country: country.value.trim(), type: type.value.trim() });
+    var cityVal = (c.value || '').trim();
+    var countryVal = (country.value || '').trim();
+    if (cityVal || countryVal) {
+      offs.push({ city: cityVal, country: countryVal, type: (type.value || '').trim() });
     }
   });
   return offs;
