@@ -331,6 +331,20 @@ app.get('/debug/db-stats', async (req, res) => {
   res.json(rows.map(r => ({ key: r.section_key, content: r.content })));
 });
 
+app.post('/debug/db-stats-fix', async (req, res) => {
+  const fixed = JSON.stringify([
+    {number:'15+', label:'Countries Served'},
+    {number:'8+', label:'Years Experience'},
+    {number:'3', label:'Global Offices'},
+    {number:'500+', label:'Happy Pets'}
+  ]);
+  await pool.query(
+    'INSERT INTO landing_content (section_key, content) VALUES (?, ?) ON DUPLICATE KEY UPDATE content = VALUES(content)',
+    ['stats', fixed]
+  );
+  res.json({ success: true });
+});
+
 app.post('/debug/save-test', async (req, res) => {
   console.log('DEBUG save-test called, body:', JSON.stringify(req.body).substring(0, 200));
   res.json({ received: req.body });

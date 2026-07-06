@@ -264,7 +264,6 @@ async function deleteContact(id) {
 async function loadLandingContent() {
   try {
     var d = await (await fetch('/api/admin/landing-content', creds)).json();
-    console.log('loadLandingContent -> content:', JSON.stringify(d.content).substring(0, 300));
     state.content = d.content || {};
     renderLandingContent();
   } catch (err) { console.error(err); }
@@ -514,7 +513,6 @@ async function saveLandingContent() {
   // Save each section
   try {
     for (var sec in c) {
-      console.log('SAVING section:', sec, '->', JSON.stringify(c[sec]).substring(0, 100));
       await fetch('/api/admin/landing-content/' + sec, { ...creds,
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
