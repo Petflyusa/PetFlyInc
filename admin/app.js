@@ -525,6 +525,7 @@ async function saveLandingContent() {
     }
     state.content = { ...state.content, ...c };
     showToast('All changes saved', 'success');
+    renderLandingContent(); // Re-render to reflect saved data
   } catch (err) { console.error(err); showToast('Save failed: ' + err.message, 'error'); }
 }
 
