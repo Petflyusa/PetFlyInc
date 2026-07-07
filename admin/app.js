@@ -494,40 +494,39 @@ async function saveLandingContent() {
     c[sec][key] = inp.value;
   });
 
-  // Stats — only save if at least one has a number
+  // Stats
   var stats = getStatsFromDOM();
-  console.log('stats from DOM:', JSON.stringify(stats));
   if (stats.length && stats.some(function(s) { return s.number; })) {
     c.stats = stats;
   }
-  // Services — only save if at least one has a title
+  // Services
   var svcs = getServicesFromDOM();
-  console.log('svcs from DOM:', JSON.stringify(svcs));
   if (svcs.length && svcs.some(function(s) { return s.title; })) {
     c.services = svcs;
   }
-  // Offices — only save if at least one has a city
+  // Offices
   var offs = getOfficesFromDOM();
-  console.log('offs from DOM:', JSON.stringify(offs));
   if (offs.length && offs.some(function(o) { return o.city; })) {
     c.offices = offs;
   }
 
-  console.log('saving content:', JSON.stringify(c));
+  // Show what we're about to save
+  alert('Saving:\n' + JSON.stringify(c, null, 2));
+
   // Save each section
   try {
     for (var sec in c) {
-      console.log('PUT /api/admin/landing-content/' + sec, JSON.stringify(c[sec]));
       var r = await fetch('/api/admin/landing-content/' + sec, { ...creds,
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(c[sec])
       });
-      console.log('save result for', sec, r.status, await r.json());
+      var result = await r.json();
+      if (!r.ok) alert('Error saving ' + sec + ': ' + JSON.stringify(result));
     }
     state.content = { ...state.content, ...c };
     showToast('All changes saved', 'success');
-  } catch (err) { console.error('save error:', err); showToast('Save failed', 'error'); }
+  } catch (err) { alert('Save failed: ' + err); showToast('Save failed', 'error'); }
 }
 
 // ── Countries ───────────────────────────────────────────────────────────────
