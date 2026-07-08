@@ -496,23 +496,34 @@ async function saveLandingContent() {
 
   // Stats — only save if at least one has a number
   var stats = getStatsFromDOM();
+  console.log('[DEBUG] getStatsFromDOM():', JSON.stringify(stats));
   if (stats.length && stats.some(function(s) { return s.number; })) {
     c.stats = stats;
+    console.log('[DEBUG] c.stats set:', JSON.stringify(c.stats));
+  } else {
+    console.log('[DEBUG] stats NOT set — length:', stats.length, 'hasNumber:', stats.some(function(s) { return s.number; }));
   }
   // Services — only save if at least one has a title
   var svcs = getServicesFromDOM();
+  console.log('[DEBUG] getServicesFromDOM():', JSON.stringify(svcs));
   if (svcs.length && svcs.some(function(s) { return s.title; })) {
     c.services = svcs;
+    console.log('[DEBUG] c.services set');
   }
   // Offices — only save if at least one has a city
   var offs = getOfficesFromDOM();
+  console.log('[DEBUG] getOfficesFromDOM():', JSON.stringify(offs));
   if (offs.length && offs.some(function(o) { return o.city; })) {
     c.offices = offs;
+    console.log('[DEBUG] c.offices set');
   }
+
+  console.log('[DEBUG] Final c object:', JSON.stringify(c));
 
   // Save each section
   try {
     for (var sec in c) {
+      console.log('[DEBUG] Saving section:', sec, 'data:', JSON.stringify(c[sec]));
       var r = await fetch('/api/admin/landing-content/' + sec, { ...creds,
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
