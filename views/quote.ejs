@@ -10,7 +10,14 @@ function submitQuoteForm(event) {
     btn.disabled = true;
 
     var fd = new FormData(form);
-    fetch('/api/quote', {method: 'POST', body: fd})
+    var data = {};
+    fd.forEach(function(value, key) { data[key] = value; });
+
+    fetch('/api/quote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
     .then(function(r) { return r.json(); })
     .then(function(d) {
         if (d.success) {
