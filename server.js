@@ -113,6 +113,11 @@ async function getLandingSection(key) {
   catch { return rows[0].content; }
 }
 
+async function getFooter() {
+  const ft = await getLandingSection('footer');
+  return ft || { email: 'info@petflyinc.com', phone: '+1 (555) 123-4567', hours: 'Mon—Fri: 9AM — 6PM PST' };
+}
+
 async function setLandingSection(key, data) {
   const json = JSON.stringify(data);
   await query(
@@ -138,23 +143,33 @@ app.get('/', async (req, res) => {
 });
 
 // Service
-app.get('/service', (req, res) => res.render('service'));
+app.get('/service', async (req, res) => {
+  const footer = await getFooter();
+  res.render('service', { footer });
+});
 
 // Quote
-app.get('/quote', (req, res) => res.render('quote'));
+app.get('/quote', async (req, res) => {
+  const footer = await getFooter();
+  res.render('quote', { footer });
+});
 
 // Contact
-app.get('/contact', (req, res) => res.render('contact'));
+app.get('/contact', async (req, res) => {
+  const footer = await getFooter();
+  res.render('contact', { footer });
+});
 
 // Regulations
 app.get('/regulations', async (req, res) => {
   try {
     const countries = await query('SELECT id, country_name FROM countries ORDER BY country_name');
     const airlines = await query('SELECT id, airline_name FROM airlines ORDER BY airline_name');
-    res.render('regulations', { countries, airlines });
+    const footer = await getFooter();
+    res.render('regulations', { countries, airlines, footer });
   } catch (err) {
     console.error(err);
-    res.render('regulations', { countries: [], airlines: [] });
+    res.render('regulations', { countries: [], airlines: [], footer: await getFooter() });
   }
 });
 
