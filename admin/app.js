@@ -457,9 +457,10 @@ function addOffice() {
 
 async function saveLandingContent() {
   var c = {};
-  // Gather simple fields (hero, about, cta, footer)
+  // Gather simple fields (hero, about, cta, footer) — skip stats/services/offices, they use indexed data-key
   document.querySelectorAll('.field-input[data-key], .field-textarea[data-key]').forEach(function(inp) {
     var sec = inp.getAttribute('data-section');
+    if (sec === 'stats' || sec === 'services' || sec === 'offices') return;
     var key = inp.getAttribute('data-key');
     if (!c[sec]) c[sec] = {};
     c[sec][key] = inp.value;
@@ -489,7 +490,6 @@ async function saveLandingContent() {
     svcsMap[idx][prop] = inp.value;
   });
   var svcs = Object.values(svcsMap);
-  console.log('[DEBUG] svcsMap keys:', Object.keys(svcsMap), 'svcs:', JSON.stringify(svcs));
   if (svcs.length && svcs.some(function(s) { return s.title; })) {
     c.services = svcs;
   }
@@ -504,7 +504,6 @@ async function saveLandingContent() {
     offsMap[idx][prop] = inp.value;
   });
   var offs = Object.values(offsMap);
-  console.log('[DEBUG] offsMap keys:', Object.keys(offsMap), 'offs:', JSON.stringify(offs));
   if (offs.length && offs.some(function(o) { return o.city; })) {
     c.offices = offs;
   }
