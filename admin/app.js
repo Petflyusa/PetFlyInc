@@ -385,6 +385,13 @@ function addStat() {
 function getStatsFromDOM() {
   var nums = Array.from(document.querySelectorAll('.stat-num'));
   var labs = Array.from(document.querySelectorAll('.stat-label'));
+  console.log('[DEBUG] stat-num count:', nums.length, 'stat-label count:', labs.length);
+  nums.forEach(function(n, i) {
+    console.log('[DEBUG] stat-num[' + i + '] tagName:', n.tagName, 'className:', n.className, 'value:', JSON.stringify(n.value), 'textContent:', JSON.stringify(n.textContent));
+  });
+  labs.forEach(function(l, i) {
+    console.log('[DEBUG] stat-label[' + i + '] tagName:', l.tagName, 'className:', l.className, 'value:', JSON.stringify(l.value), 'textContent:', JSON.stringify(l.textContent));
+  });
   var stats = [];
   nums.forEach(function(n, i) {
     var lab = labs[i];
