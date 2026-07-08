@@ -489,6 +489,7 @@ async function saveLandingContent() {
     svcsMap[idx][prop] = inp.value;
   });
   var svcs = Object.values(svcsMap);
+  console.log('[DEBUG] svcsMap keys:', Object.keys(svcsMap), 'svcs:', JSON.stringify(svcs));
   if (svcs.length && svcs.some(function(s) { return s.title; })) {
     c.services = svcs;
   }
@@ -503,6 +504,7 @@ async function saveLandingContent() {
     offsMap[idx][prop] = inp.value;
   });
   var offs = Object.values(offsMap);
+  console.log('[DEBUG] offsMap keys:', Object.keys(offsMap), 'offs:', JSON.stringify(offs));
   if (offs.length && offs.some(function(o) { return o.city; })) {
     c.offices = offs;
   }
