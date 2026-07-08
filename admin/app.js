@@ -465,6 +465,7 @@ async function saveLandingContent() {
     if (!c[sec]) c[sec] = {};
     c[sec][key] = inp.value;
   });
+  console.log('[DEBUG] After simple fields, c keys =', Object.keys(c));
 
   // Gather stats: group by index from data-key like "0_number", "1_label"
   var statsMap = {};
@@ -510,6 +511,7 @@ async function saveLandingContent() {
 
   try {
     for (var sec in c) {
+      console.log('[DEBUG] Saving section:', sec, 'data:', JSON.stringify(c[sec]));
       var r = await fetch('/api/admin/landing-content/' + sec, { ...creds,
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
