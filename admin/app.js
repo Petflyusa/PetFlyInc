@@ -369,38 +369,25 @@ function renderStatsItems(stats) {
   var html = '';
   stats.forEach(function(s, i) {
     html += '<div style="display:grid;grid-template-columns:1fr 2fr;gap:0.75rem;margin-bottom:0.75rem;align-items:start;">' +
-      '<input type="text" class="field-input stat-num" placeholder="Number (e.g. 15+)" value="' + escHtml(s.number || '') + '" data-idx="' + i + '">' +
-      '<input type="text" class="field-input stat-label" placeholder="Label" value="' + escHtml(s.label || '') + '" data-idx="' + i + '">' +
+      '<input type="text" class="field-input" data-section="stats" data-key="' + i + '_number" placeholder="Number (e.g. 15+)" value="' + escHtml(s.number || '') + '">' +
+      '<input type="text" class="field-input" data-section="stats" data-key="' + i + '_label" placeholder="Label" value="' + escHtml(s.label || '') + '">' +
     '</div>';
   });
   el.innerHTML = html;
 }
 
 function addStat() {
-  var stats = getStatsFromDOM();
+  var stats = [];
+  Array.from(document.querySelectorAll('.field-input[data-section="stats"]')).forEach(function(inp) {
+    var m = inp.getAttribute('data-key').match(/^(\d+)_(.+)/);
+    if (!m) return;
+    var idx = parseInt(m[1]);
+    var prop = m[2];
+    if (!stats[idx]) stats[idx] = {};
+    stats[idx][prop] = inp.value;
+  });
   stats.push({number:'', label:''});
   renderStatsItems(stats);
-}
-
-function getStatsFromDOM() {
-  var nums = Array.from(document.querySelectorAll('.stat-num'));
-  var labs = Array.from(document.querySelectorAll('.stat-label'));
-  console.log('[DEBUG] stat-num count:', nums.length, 'stat-label count:', labs.length);
-  nums.forEach(function(n, i) {
-    console.log('[DEBUG] stat-num[' + i + '] tagName:', n.tagName, 'className:', n.className, 'value:', JSON.stringify(n.value), 'textContent:', JSON.stringify(n.textContent));
-  });
-  labs.forEach(function(l, i) {
-    console.log('[DEBUG] stat-label[' + i + '] tagName:', l.tagName, 'className:', l.className, 'value:', JSON.stringify(l.value), 'textContent:', JSON.stringify(l.textContent));
-  });
-  var stats = [];
-  nums.forEach(function(n, i) {
-    var lab = labs[i];
-    if (!lab) return;
-    if ((n.value || '').trim() || (lab.value || '').trim()) {
-      stats.push({ number: (n.value || '').trim(), label: (lab.value || '').trim() });
-    }
-  });
-  return stats;
 }
 
 function renderServicesItems(svcs) {
@@ -412,44 +399,31 @@ function renderServicesItems(svcs) {
   svcs.forEach(function(s, i) {
     html += '<div style="background:rgba(247,245,240,0.04);border:1px solid var(--border);padding:1rem;margin-bottom:0.75rem;border-radius:2px;">' +
       '<div style="display:grid;grid-template-columns:auto 1fr;gap:0.75rem;margin-bottom:0.75rem;">' +
-        '<select class="field-select" data-idx="' + i + '" data-type="icon" style="width:120px;">';
+        '<select class="field-input" data-section="services" data-key="' + i + '_icon" style="width:120px;">';
     icons.forEach(function(ic) {
       html += '<option value="' + ic + '"' + (s.icon === ic ? ' selected' : '') + '>' + ic.replace('fa-','') + '</option>';
     });
     html += '</select>' +
-        '<input type="text" class="field-input svc-title" placeholder="Service Title" value="' + escHtml(s.title || '') + '" data-idx="' + i + '">' +
+        '<input type="text" class="field-input" data-section="services" data-key="' + i + '_title" placeholder="Service Title" value="' + escHtml(s.title || '') + '">' +
       '</div>' +
-      '<textarea class="field-textarea svc-desc" placeholder="Service Description" rows="2" data-idx="' + i + '">' + escHtml(s.desc || '') + '</textarea>' +
+      '<textarea class="field-input" data-section="services" data-key="' + i + '_desc" placeholder="Service Description" rows="2">' + escHtml(s.desc || '') + '</textarea>' +
     '</div>';
   });
   el.innerHTML = html;
 }
 
 function addService() {
-  var svcs = getServicesFromDOM();
+  var svcs = [];
+  Array.from(document.querySelectorAll('.field-input[data-section="services"], textarea[data-section="services"]')).forEach(function(inp) {
+    var m = inp.getAttribute('data-key').match(/^(\d+)_(.+)/);
+    if (!m) return;
+    var idx = parseInt(m[1]);
+    var prop = m[2];
+    if (!svcs[idx]) svcs[idx] = {icon:'fa-plane', title:'', desc:''};
+    svcs[idx][prop] = inp.value;
+  });
   svcs.push({icon:'fa-plane', title:'', desc:''});
   renderServicesItems(svcs);
-}
-
-function getServicesFromDOM() {
-  var titles = Array.from(document.querySelectorAll('.svc-title'));
-  var descs = Array.from(document.querySelectorAll('.svc-desc'));
-  var sels = Array.from(document.querySelectorAll('select[data-type="icon"]'));
-  var svcs = [];
-  titles.forEach(function(t, i) {
-    var desc = descs[i];
-    if (!desc) return;
-    var titleVal = (t.value || '').trim();
-    var descVal = (desc.value || '').trim();
-    if (titleVal || descVal) {
-      svcs.push({
-        icon: sels[i] ? sels[i].value : 'fa-plane',
-        title: titleVal,
-        desc: descVal
-      });
-    }
-  });
-  return svcs;
 }
 
 function renderOfficesItems(offs) {
@@ -459,41 +433,31 @@ function renderOfficesItems(offs) {
   var html = '';
   offs.forEach(function(o, i) {
     html += '<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:0.75rem;margin-bottom:0.75rem;align-items:end;">' +
-      '<input type="text" class="field-input off-city" placeholder="City" value="' + escHtml(o.city || '') + '" data-idx="' + i + '">' +
-      '<input type="text" class="field-input off-country" placeholder="Country" value="' + escHtml(o.country || '') + '" data-idx="' + i + '">' +
-      '<input type="text" class="field-input off-type" placeholder="Type (e.g. HQ)" value="' + escHtml(o.type || '') + '" data-idx="' + i + '">' +
+      '<input type="text" class="field-input" data-section="offices" data-key="' + i + '_city" placeholder="City" value="' + escHtml(o.city || '') + '">' +
+      '<input type="text" class="field-input" data-section="offices" data-key="' + i + '_country" placeholder="Country" value="' + escHtml(o.country || '') + '">' +
+      '<input type="text" class="field-input" data-section="offices" data-key="' + i + '_type" placeholder="Type (e.g. HQ)" value="' + escHtml(o.type || '') + '">' +
     '</div>';
   });
   el.innerHTML = html;
 }
 
 function addOffice() {
-  var offs = getOfficesFromDOM();
+  var offs = [];
+  Array.from(document.querySelectorAll('.field-input[data-section="offices"]')).forEach(function(inp) {
+    var m = inp.getAttribute('data-key').match(/^(\d+)_(.+)/);
+    if (!m) return;
+    var idx = parseInt(m[1]);
+    var prop = m[2];
+    if (!offs[idx]) offs[idx] = {};
+    offs[idx][prop] = inp.value;
+  });
   offs.push({city:'', country:'', type:''});
   renderOfficesItems(offs);
 }
 
-function getOfficesFromDOM() {
-  var offs = [];
-  var cities = Array.from(document.querySelectorAll('.off-city'));
-  var countries = Array.from(document.querySelectorAll('.off-country'));
-  var types = Array.from(document.querySelectorAll('.off-type'));
-  cities.forEach(function(c, i) {
-    var country = countries[i];
-    var type = types[i];
-    if (!country || !type) return;
-    var cityVal = (c.value || '').trim();
-    var countryVal = (country.value || '').trim();
-    if (cityVal || countryVal) {
-      offs.push({ city: cityVal, country: countryVal, type: (type.value || '').trim() });
-    }
-  });
-  return offs;
-}
-
 async function saveLandingContent() {
   var c = {};
-  // Gather simple fields
+  // Gather simple fields (hero, about, cta, footer)
   document.querySelectorAll('.field-input[data-key], .field-textarea[data-key]').forEach(function(inp) {
     var sec = inp.getAttribute('data-section');
     var key = inp.getAttribute('data-key');
@@ -501,36 +465,50 @@ async function saveLandingContent() {
     c[sec][key] = inp.value;
   });
 
-  // Stats — only save if at least one has a number
-  var stats = getStatsFromDOM();
-  console.log('[DEBUG] getStatsFromDOM():', JSON.stringify(stats));
+  // Gather stats: group by index from data-key like "0_number", "1_label"
+  var statsMap = {};
+  Array.from(document.querySelectorAll('.field-input[data-section="stats"]')).forEach(function(inp) {
+    var m = inp.getAttribute('data-key').match(/^(\d+)_(.+)/);
+    if (!m) return;
+    var idx = m[1], prop = m[2];
+    if (!statsMap[idx]) statsMap[idx] = {};
+    statsMap[idx][prop] = inp.value;
+  });
+  var stats = Object.values(statsMap);
   if (stats.length && stats.some(function(s) { return s.number; })) {
     c.stats = stats;
-    console.log('[DEBUG] c.stats set:', JSON.stringify(c.stats));
-  } else {
-    console.log('[DEBUG] stats NOT set — length:', stats.length, 'hasNumber:', stats.some(function(s) { return s.number; }));
   }
-  // Services — only save if at least one has a title
-  var svcs = getServicesFromDOM();
-  console.log('[DEBUG] getServicesFromDOM():', JSON.stringify(svcs));
+
+  // Gather services
+  var svcsMap = {};
+  Array.from(document.querySelectorAll('.field-input[data-section="services"], textarea[data-section="services"]')).forEach(function(inp) {
+    var m = inp.getAttribute('data-key').match(/^(\d+)_(.+)/);
+    if (!m) return;
+    var idx = m[1], prop = m[2];
+    if (!svcsMap[idx]) svcsMap[idx] = {icon:'fa-plane', title:'', desc:''};
+    svcsMap[idx][prop] = inp.value;
+  });
+  var svcs = Object.values(svcsMap);
   if (svcs.length && svcs.some(function(s) { return s.title; })) {
     c.services = svcs;
-    console.log('[DEBUG] c.services set');
   }
-  // Offices — only save if at least one has a city
-  var offs = getOfficesFromDOM();
-  console.log('[DEBUG] getOfficesFromDOM():', JSON.stringify(offs));
+
+  // Gather offices
+  var offsMap = {};
+  Array.from(document.querySelectorAll('.field-input[data-section="offices"]')).forEach(function(inp) {
+    var m = inp.getAttribute('data-key').match(/^(\d+)_(.+)/);
+    if (!m) return;
+    var idx = m[1], prop = m[2];
+    if (!offsMap[idx]) offsMap[idx] = {};
+    offsMap[idx][prop] = inp.value;
+  });
+  var offs = Object.values(offsMap);
   if (offs.length && offs.some(function(o) { return o.city; })) {
     c.offices = offs;
-    console.log('[DEBUG] c.offices set');
   }
 
-  console.log('[DEBUG] Final c object:', JSON.stringify(c));
-
-  // Save each section
   try {
     for (var sec in c) {
-      console.log('[DEBUG] Saving section:', sec, 'data:', JSON.stringify(c[sec]));
       var r = await fetch('/api/admin/landing-content/' + sec, { ...creds,
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
