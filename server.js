@@ -9,11 +9,42 @@ const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const mysql = require('mysql2/promise');
+const nodemailer = require('nodemailer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// View engine
+// ── Email Transporter ───────────────────────────────────────────────────────
+const smtpConfig = {
+  host: process.env.SMTP_HOST || 'smtp.hostinger.com',
+  port: parseInt(process.env.SMTP_PORT) || 465,
+  secure: true,
+  auth: {
+    user: process.env.SMTP_USER || 'info@petflyinc.com',
+    pass: process.env.SMTP_PASS || '',
+  },
+};
+const mailTransporter = nodemailer.createTransport(smtpConfig);
+
+async function sendEmail(to, subject, htmlContent) {
+  if (!smtpConfig.auth.pass) {
+    console.warn('[Email] SMTP_PASS not set, skipping email send to', to);
+    return;
+  }
+  try {
+    await mailTransporter.sendMail({
+      from: `"Pet Fly Inc" <${smtpConfig.auth.user}>`,
+      to,
+      subject,
+      html: htmlContent,
+    });
+    console.log('[Email] Sent to', to);
+  } catch (err) {
+    console.error('[Email] Failed to send:', err.message);
+  }
+}
+
+// ── View engine ─────────────────────────────────────────────────────────────
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
@@ -210,7 +241,7 @@ app.get('/api/regulations/airline/:id', async (req, res) => {
 });
 
 // ── Quote Submission ───────────────────────────────────────────────────────
-app.post('/api/quote', (req, res) => {
+app.post('/api/quote', async (req, res) => {
   const {
     pet_type, pet_name, breed, pet_weight,
     origin_country, origin_city, dest_country, dest_city,
@@ -223,34 +254,66 @@ app.post('/api/quote', (req, res) => {
 
   if (!contact_name || !email) return res.status(400).json({ success: false, message: 'Name and email are required.' });
 
-  query(
-    `INSERT INTO quote_requests
-      (contact_name, email, phone, pet_type, pet_name, breed, pet_weight,
-       origin_country, origin_city, dest_country, dest_city, travel_date, transport_type, notes)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-    [contact_name, email, phone||null, pet_type||'Dog', pet_name||null, breed||null, pet_weight||null,
-     origin_country||null, origin_city||null, dest_country||null, dest_city||null,
-     travel_date||null, transport_type||null, notes||null]
-  )
-  .then(() => res.json({ success: true }))
-  .catch(err => {
+  try {
+    await query(
+      `INSERT INTO quote_requests
+        (contact_name, email, phone, pet_type, pet_name, breed, pet_weight,
+         origin_country, origin_city, dest_country, dest_city, travel_date, transport_type, notes)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [contact_name, email, phone||null, pet_type||'Dog', pet_name||null, breed||null, pet_weight||null,
+       origin_country||null, origin_city||null, dest_country||null, dest_city||null,
+       travel_date||null, transport_type||null, notes||null]
+    );
+
+    // Send email notification to admin
+    const adminEmailHtml = `
+      <h2>New Quote Request</h2>
+      <p><strong>From:</strong> ${contact_name} &lt;${email}&gt; ${phone ? ` / ${phone}` : ''}</p>
+      <p><strong>Pet:</strong> ${pet_type || 'Dog'}${pet_name ? ` — ${pet_name}` : ''}${breed ? ` (${breed})` : ''}${pet_weight ? `, ${pet_weight}` : ''}</p>
+      <p><strong>From:</strong> ${origin_city || 'N/A'}, ${origin_country || 'N/A'}</p>
+      <p><strong>To:</strong> ${dest_city || 'N/A'}, ${dest_country || 'N/A'}</p>
+      <p><strong>Travel Date:</strong> ${travel_date || 'Not specified'}</p>
+      <p><strong>Transport Type:</strong> ${transport_type || 'Not specified'}</p>
+      ${notes ? `<p><strong>Notes:</strong> ${notes}</p>` : ''}
+      <hr><p style="color:#888;">Sent via petflyinc.com quote form</p>
+    `;
+    await sendEmail('info@petflyinc.com', `New Quote Request from ${contact_name}`, adminEmailHtml);
+
+    res.json({ success: true });
+  } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: 'Server error. Please try again.' });
-  });
+  }
 });
 
 // ── Contact Submission ──────────────────────────────────────────────────────
-app.post('/api/contact', (req, res) => {
+app.post('/api/contact', async (req, res) => {
   const { name, email, phone, subject, message, fax_only, email_addr } = req.body;
   if (fax_only || email_addr) return res.json({ success: true });
   if (!name || !email || !message) return res.status(400).json({ success: false });
 
-  query(
-    'INSERT INTO contact_messages (name, email, phone, subject, message) VALUES (?,?,?,?,?)',
-    [name, email, phone||null, subject||null, message]
-  )
-  .then(() => res.json({ success: true }))
-  .catch(err => { console.error(err); res.status(500).json({ success: false }); });
+  try {
+    await query(
+      'INSERT INTO contact_messages (name, email, phone, subject, message) VALUES (?,?,?,?,?)',
+      [name, email, phone||null, subject||null, message]
+    );
+
+    // Send email notification to admin
+    const adminEmailHtml = `
+      <h2>New Contact Message</h2>
+      <p><strong>From:</strong> ${name} &lt;${email}&gt; ${phone ? ` / ${phone}` : ''}</p>
+      <p><strong>Subject:</strong> ${subject || '(no subject)'}</p>
+      <p><strong>Message:</strong></p>
+      <p>${message.replace(/\n/g, '<br>')}</p>
+      <hr><p style="color:#888;">Sent via petflyinc.com contact form</p>
+    `;
+    await sendEmail('info@petflyinc.com', `Contact Form: ${subject || name}`, adminEmailHtml);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false });
+  }
 });
 
 // ── Admin Auth Routes ──────────────────────────────────────────────────────
