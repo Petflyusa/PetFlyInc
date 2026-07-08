@@ -279,6 +279,32 @@ app.post('/api/quote', async (req, res) => {
     `;
     await sendEmail('info@petflyinc.com', `New Quote Request from ${contact_name}`, adminEmailHtml);
 
+    // Send auto-reply confirmation to the client
+    const autoReplyHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: #1a3a5c; color: white; padding: 24px; text-align: center;">
+          <h1 style="margin: 0; font-size: 24px;">🐾 Pet Fly Inc</h1>
+          <p style="margin: 8px 0 0; opacity: 0.9;">International Pet Transportation</p>
+        </div>
+        <div style="padding: 32px 24px; background: #ffffff;">
+          <h2 style="color: #1a3a5c; margin-top: 0;">Hi ${contact_name},</h2>
+          <p style="font-size: 16px; line-height: 1.6; color: #333;">Thank you for reaching out to Pet Fly Inc! We've received your quote request and our team is on it.</p>
+          <div style="background: #f0f7ff; border-left: 4px solid #1a3a5c; padding: 16px; margin: 24px 0; border-radius: 4px;">
+            <p style="margin: 0; font-size: 15px; color: #333;"><strong>🕐 Response Time:</strong></p>
+            <p style="margin: 8px 0 0; font-size: 15px; color: #333;">During business hours (Mon–Fri, 9AM–6PM PST), we typically respond within <strong>15–30 minutes</strong>.</p>
+            <p style="margin: 8px 0 0; font-size: 15px; color: #333;">Outside business hours or on weekends, we'll get back to you first thing the next business day.</p>
+          </div>
+          <p style="font-size: 15px; color: #555; line-height: 1.6;">In the meantime, feel free to explore our services at <a href="https://petflyinc.com/service" style="color: #1a3a5c;">petflyinc.com/service</a> or learn about country-specific regulations at <a href="https://petflyinc.com/regulations" style="color: #1a3a5c;">petflyinc.com/regulations</a>.</p>
+          <p style="font-size: 15px; color: #333; margin-top: 24px;">Safe travels for your furry friend! 🐕🐈</p>
+          <p style="color: #888; font-size: 14px; margin-top: 32px;">— The Pet Fly Inc Team<br>📧 info@petflyinc.com | 🌐 petflyinc.com</p>
+        </div>
+        <div style="background: #f5f5f5; padding: 16px 24px; text-align: center; font-size: 12px; color: #999;">
+          <p style="margin: 0;">© ${new Date().getFullYear()} Pet Fly Inc. IATA & USDA Certified.</p>
+        </div>
+      </div>
+    `;
+    await sendEmail(email, `We've received your quote request, ${contact_name}! 🐾`, autoReplyHtml);
+
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -308,6 +334,31 @@ app.post('/api/contact', async (req, res) => {
       <hr><p style="color:#888;">Sent via petflyinc.com contact form</p>
     `;
     await sendEmail('info@petflyinc.com', `Contact Form: ${subject || name}`, adminEmailHtml);
+
+    // Send auto-reply confirmation to the client
+    const autoReplyHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: #1a3a5c; color: white; padding: 24px; text-align: center;">
+          <h1 style="margin: 0; font-size: 24px;">🐾 Pet Fly Inc</h1>
+          <p style="margin: 8px 0 0; opacity: 0.9;">International Pet Transportation</p>
+        </div>
+        <div style="padding: 32px 24px; background: #ffffff;">
+          <h2 style="color: #1a3a5c; margin-top: 0;">Hi ${name},</h2>
+          <p style="font-size: 16px; line-height: 1.6; color: #333;">Thank you for contacting Pet Fly Inc! We've received your message and our team will get back to you shortly.</p>
+          <div style="background: #f0f7ff; border-left: 4px solid #1a3a5c; padding: 16px; margin: 24px 0; border-radius: 4px;">
+            <p style="margin: 0; font-size: 15px; color: #333;"><strong>🕐 Response Time:</strong></p>
+            <p style="margin: 8px 0 0; font-size: 15px; color: #333;">During business hours (Mon–Fri, 9AM–6PM PST), we typically respond within <strong>15–30 minutes</strong>.</p>
+            <p style="margin: 8px 0 0; font-size: 15px; color: #333;">Outside business hours or on weekends, we'll get back to you first thing the next business day.</p>
+          </div>
+          <p style="font-size: 15px; color: #333; margin-top: 24px;">Safe travels for your furry friend! 🐕🐈</p>
+          <p style="color: #888; font-size: 14px; margin-top: 32px;">— The Pet Fly Inc Team<br>📧 info@petflyinc.com | 🌐 petflyinc.com</p>
+        </div>
+        <div style="background: #f5f5f5; padding: 16px 24px; text-align: center; font-size: 12px; color: #999;">
+          <p style="margin: 0;">© ${new Date().getFullYear()} Pet Fly Inc. IATA & USDA Certified.</p>
+        </div>
+      </div>
+    `;
+    await sendEmail(email, `We've received your message, ${name}! 🐾`, autoReplyHtml);
 
     res.json({ success: true });
   } catch (err) {
