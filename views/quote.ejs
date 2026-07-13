@@ -1,6 +1,57 @@
 <%- include('partials/header', { currentPage: 'quote' }) %>
 
 <script>
+var petCounter = 1;
+
+function addPetEntry() {
+    petCounter++;
+    var container = document.getElementById('petsContainer');
+    var div = document.createElement('div');
+    div.className = 'pet-entry';
+    div.id = 'pet-' + petCounter;
+    div.style.cssText = 'margin-top: var(--space-md); padding: var(--space-md); background: rgba(247,245,240,0.03); border: 1px solid rgba(247,245,240,0.1); border-radius: 4px; position: relative;';
+    div.innerHTML =
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-sm);">' +
+            '<span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--accent);font-weight:500;">Pet #'+petCounter+'</span>' +
+            '<button type="button" onclick="removePetEntry('+petCounter+')" style="background:none;border:none;color:rgba(247,245,240,0.4);cursor:pointer;font-size:1.25rem;line-height:1;padding:0;">&times;</button>' +
+        '</div>' +
+        '<div class="form-grid">' +
+            '<div class="form-group">' +
+                '<label>Pet Type *</label>' +
+                '<select class="form-control" name="pet_type_'+petCounter+'" required>' +
+                    '<option value="">Select</option>' +
+                    '<option value="Dog">Dog</option>' +
+                    '<option value="Cat">Cat</option>' +
+                    '<option value="Bird">Bird</option>' +
+                    '<option value="Rabbit">Rabbit</option>' +
+                    '<option value="Other">Other</option>' +
+                '</select>' +
+            '</div>' +
+            '<div class="form-group">' +
+                '<label>Pet Name</label>' +
+                '<input type="text" class="form-control" name="pet_name_'+petCounter+'" placeholder="Optional">' +
+            '</div>' +
+            '<div class="form-group">' +
+                '<label>Breed</label>' +
+                '<input type="text" class="form-control" name="breed_'+petCounter+'" placeholder="e.g., Golden Retriever">' +
+            '</div>' +
+            '<div class="form-group">' +
+                '<label>Date of Birth</label>' +
+                '<input type="date" class="form-control" name="pet_dob_'+petCounter+'">' +
+            '</div>' +
+            '<div class="form-group">' +
+                '<label>Travel Date</label>' +
+                '<input type="date" class="form-control" name="travel_date_'+petCounter+'">' +
+            '</div>' +
+        '</div>';
+    container.appendChild(div);
+}
+
+function removePetEntry(id) {
+    var el = document.getElementById('pet-' + id);
+    if (el) el.remove();
+}
+
 function submitQuoteForm(event) {
     event.preventDefault();
     var form = document.getElementById('quoteForm');
@@ -12,6 +63,38 @@ function submitQuoteForm(event) {
     var fd = new FormData(form);
     var data = {};
     fd.forEach(function(value, key) { data[key] = value; });
+
+    // Collect all pet entries into arrays
+    var petTypes = [], petNames = [], breeds = [], petDobs = [], travelDates = [];
+    var idx = 1;
+    while (document.getElementById('pet-' + idx) || idx === 1) {
+        if (idx === 1 || document.getElementById('pet-' + idx)) {
+            var t = data['pet_type_' + idx] || data['pet_type'];
+            var n = data['pet_name_' + idx] || data['pet_name'];
+            var b = data['breed_' + idx] || data['breed'];
+            var d = data['pet_dob_' + idx] || data['pet_dob'];
+            var td = data['travel_date_' + idx] || data['travel_date'];
+            if (t) petTypes.push(t);
+            if (n) petNames.push(n);
+            if (b) breeds.push(b);
+            if (d) petDobs.push(d);
+            if (td) travelDates.push(td);
+        }
+        idx++;
+        if (idx > 20) break;
+    }
+
+    // Replace flat fields with arrays
+    if (petTypes.length) data.pet_type = petTypes.join('|');
+    if (petNames.length) data.pet_name = petNames.join('|');
+    if (breeds.length) data.breed = breeds.join('|');
+    if (petDobs.length) data.pet_dob = petDobs.join('|');
+    if (travelDates.length) data.travel_date = travelDates.join('|');
+
+    // Remove numbered sub-fields
+    Object.keys(data).forEach(function(k) {
+        if (k.match(/_\d+$/)) delete data[k];
+    });
 
     fetch('/api/quote', {
         method: 'POST',
@@ -80,31 +163,47 @@ function submitQuoteForm(event) {
 
             <div style="margin-bottom: var(--space-lg);">
               <span class="section-label" style="margin-bottom: 1.5rem; display:block;">Pet Information</span>
-              <div class="form-grid">
-                <div class="form-group">
-                  <label>Pet Type *</label>
-                  <select class="form-control" name="pet_type" required>
-                    <option value="">Select</option>
-                    <option value="Dog">Dog</option>
-                    <option value="Cat">Cat</option>
-                    <option value="Bird">Bird</option>
-                    <option value="Rabbit">Rabbit</option>
-                    <option value="Other">Other</option>
-                  </select>
+
+              <div id="petsContainer">
+
+                <!-- Pet #1 -->
+                <div class="pet-entry" id="pet-1">
+                  <div class="form-grid">
+                    <div class="form-group">
+                      <label>Pet Type *</label>
+                      <select class="form-control" name="pet_type" required>
+                        <option value="">Select</option>
+                        <option value="Dog">Dog</option>
+                        <option value="Cat">Cat</option>
+                        <option value="Bird">Bird</option>
+                        <option value="Rabbit">Rabbit</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label>Pet Name</label>
+                      <input type="text" class="form-control" name="pet_name" placeholder="Optional">
+                    </div>
+                    <div class="form-group">
+                      <label>Breed</label>
+                      <input type="text" class="form-control" name="breed" placeholder="e.g., Golden Retriever">
+                    </div>
+                    <div class="form-group">
+                      <label>Date of Birth</label>
+                      <input type="date" class="form-control" name="pet_dob">
+                    </div>
+                    <div class="form-group">
+                      <label>Travel Date</label>
+                      <input type="date" class="form-control" name="travel_date">
+                    </div>
+                  </div>
                 </div>
-                <div class="form-group">
-                  <label>Pet Name</label>
-                  <input type="text" class="form-control" name="pet_name" placeholder="Optional">
-                </div>
-                <div class="form-group">
-                  <label>Breed</label>
-                  <input type="text" class="form-control" name="breed" placeholder="e.g., Golden Retriever">
-                </div>
-                <div class="form-group">
-                  <label>Travel Date</label>
-                  <input type="date" class="form-control" name="travel_date">
-                </div>
+
               </div>
+
+              <button type="button" onclick="addPetEntry()" style="margin-top: var(--space-sm); background: none; border: 1px dashed rgba(247,245,240,0.2); color: rgba(247,245,240,0.5); padding: 0.5rem 1rem; font-size: 0.8125rem; cursor: pointer; width: 100%; font-family: var(--font-sans); transition: all 0.2s;">
+                <i class="fas fa-plus" style="margin-right: 0.5rem;"></i> Add another pet
+              </button>
             </div>
 
             <div style="margin-bottom: var(--space-lg);">
