@@ -143,45 +143,6 @@ function submitQuoteForm(event) {
     });
 }
 </script>
-<style>
-.add-pet-btn {
-  margin-top: var(--space-sm);
-  background: rgba(247, 245, 240, 0.05);
-  border: 1px dashed rgba(247, 245, 240, 0.5);
-  color: rgba(247, 245, 240, 0.9);
-  padding: 0.65rem 1rem;
-  font-size: 0.9rem;
-  cursor: pointer;
-  width: 100%;
-  font-family: var(--font-sans);
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  border-radius: 4px;
-}
-.add-pet-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: rgba(189, 155, 90, 0.12);
-}
-.pet-entry .remove-pet-btn {
-  background: rgba(247, 245, 240, 0.06);
-  border: 1px solid rgba(247, 245, 240, 0.2);
-  color: rgba(247, 245, 240, 0.7);
-  cursor: pointer;
-  font-size: 0.75rem;
-  padding: 0.2rem 0.5rem;
-  border-radius: 3px;
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
-.pet-entry .remove-pet-btn:hover {
-  border-color: #dc4040;
-  color: #ff8080;
-}
-</style>
 
   <!-- PAGE HEADER -->
   <section class="page-header" style="color: var(--cream);">
@@ -313,7 +274,7 @@ function submitQuoteForm(event) {
 
               <!-- Pickup & Delivery Service -->
               <div style="margin-top: var(--space-md);">
-                <label style="display:flex;align-items:center;gap:0.75rem;cursor:pointer;font-size:0.9rem;color:rgba(247,245,240,0.8);">
+                <label style="display:flex;align-items:center;gap:0.75rem;cursor:pointer;font-size:0.9rem;color:rgba(247,245,240,0.85);">
                   <input type="checkbox" id="pickupDelivery" name="pickup_delivery" onchange="togglePickupDelivery()" style="width:1rem;height:1rem;accent-color:var(--accent);cursor:pointer;">
                   <span>Pickup &amp; Delivery Service</span>
                 </label>

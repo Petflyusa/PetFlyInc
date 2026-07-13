@@ -13,6 +13,47 @@
   <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    .add-pet-btn {
+      margin-top: var(--space-sm);
+      background: rgba(247, 245, 240, 0.08);
+      border: 1px dashed rgba(247, 245, 240, 0.5);
+      color: rgba(247, 245, 240, 0.9);
+      padding: 0.65rem 1rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+      width: 100%;
+      font-family: var(--font-sans);
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      border-radius: 4px;
+    }
+    .add-pet-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(189, 155, 90, 0.15);
+    }
+    .pet-entry .remove-pet-btn {
+      background: rgba(247, 245, 240, 0.08);
+      border: 1px solid rgba(247, 245, 240, 0.25);
+      color: rgba(247, 245, 240, 0.85);
+      cursor: pointer;
+      font-size: 0.75rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 3px;
+      transition: all 0.2s;
+      flex-shrink: 0;
+      font-family: var(--font-sans);
+    }
+    .pet-entry .remove-pet-btn:hover {
+      border-color: #dc4040;
+      color: #ff8080;
+      background: rgba(220, 64, 64, 0.1);
+    }
+  </style>
 </head>
 <body>
 
