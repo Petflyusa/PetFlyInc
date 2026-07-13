@@ -13,7 +13,7 @@ function addPetEntry() {
     div.innerHTML =
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-sm);">' +
             '<span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--accent);font-weight:500;">Pet #'+petCounter+'</span>' +
-            '<button type="button" onclick="removePetEntry('+petCounter+')" style="background:none;border:none;color:rgba(247,245,240,0.4);cursor:pointer;font-size:1.25rem;line-height:1;padding:0;">&times;</button>' +
+            '<button type="button" onclick="removePetEntry('+petCounter+')" class="remove-pet-btn">Remove</button>' +
         '</div>' +
         '<div class="form-grid" style="grid-template-columns:1fr 1fr;">' +
             '<div class="form-group">' +
@@ -60,6 +60,8 @@ function addPetEntry() {
 }
 
 function removePetEntry(id) {
+    var count = document.querySelectorAll('.pet-entry').length;
+    if (count <= 1) return;
     var el = document.getElementById('pet-' + id);
     if (el) el.remove();
 }
@@ -145,10 +147,10 @@ function submitQuoteForm(event) {
 .add-pet-btn {
   margin-top: var(--space-sm);
   background: rgba(247, 245, 240, 0.05);
-  border: 1px dashed rgba(247, 245, 240, 0.4);
-  color: rgba(247, 245, 240, 0.8);
-  padding: 0.6rem 1rem;
-  font-size: 0.875rem;
+  border: 1px dashed rgba(247, 245, 240, 0.5);
+  color: rgba(247, 245, 240, 0.9);
+  padding: 0.65rem 1rem;
+  font-size: 0.9rem;
   cursor: pointer;
   width: 100%;
   font-family: var(--font-sans);
@@ -163,6 +165,21 @@ function submitQuoteForm(event) {
   border-color: var(--accent);
   color: var(--accent);
   background: rgba(189, 155, 90, 0.12);
+}
+.pet-entry .remove-pet-btn {
+  background: rgba(247, 245, 240, 0.06);
+  border: 1px solid rgba(247, 245, 240, 0.2);
+  color: rgba(247, 245, 240, 0.7);
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.pet-entry .remove-pet-btn:hover {
+  border-color: #dc4040;
+  color: #ff8080;
 }
 </style>
 
@@ -215,6 +232,10 @@ function submitQuoteForm(event) {
 
                 <!-- Pet #1 -->
                 <div class="pet-entry" id="pet-1">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-sm);">
+                    <span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--accent);font-weight:500;">Pet #1</span>
+                    <button type="button" onclick="removePetEntry(1)" class="remove-pet-btn">Remove</button>
+                  </div>
                   <div class="form-grid" style="grid-template-columns:1fr 1fr;">
                     <div class="form-group">
                       <label>Pet Type *</label>
