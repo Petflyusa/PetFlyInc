@@ -15,7 +15,7 @@ function addPetEntry() {
             '<span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--accent);font-weight:500;">Pet #'+petCounter+'</span>' +
             '<button type="button" onclick="removePetEntry('+petCounter+')" style="background:none;border:none;color:rgba(247,245,240,0.4);cursor:pointer;font-size:1.25rem;line-height:1;padding:0;">&times;</button>' +
         '</div>' +
-        '<div class="form-grid">' +
+        '<div class="form-grid" style="grid-template-columns:1fr 1fr;">' +
             '<div class="form-group">' +
                 '<label>Pet Type *</label>' +
                 '<select class="form-control" name="pet_type_'+petCounter+'" required>' +
@@ -36,12 +36,24 @@ function addPetEntry() {
                 '<input type="text" class="form-control" name="breed_'+petCounter+'" placeholder="e.g., Golden Retriever">' +
             '</div>' +
             '<div class="form-group">' +
+                '<label>Color</label>' +
+                '<input type="text" class="form-control" name="pet_color_'+petCounter+'" placeholder="e.g., Golden">' +
+            '</div>' +
+            '<div class="form-group">' +
+                '<label>Gender</label>' +
+                '<select class="form-control" name="pet_gender_'+petCounter+'">' +
+                    '<option value="">Select</option>' +
+                    '<option value="Male">Male</option>' +
+                    '<option value="Female">Female</option>' +
+                '</select>' +
+            '</div>' +
+            '<div class="form-group">' +
                 '<label>Date of Birth</label>' +
                 '<input type="date" class="form-control" name="pet_dob_'+petCounter+'">' +
             '</div>' +
-            '<div class="form-group">' +
-                '<label>Travel Date</label>' +
-                '<input type="date" class="form-control" name="travel_date_'+petCounter+'">' +
+            '<div class="form-group full">' +
+                '<label>Microchip Number</label>' +
+                '<input type="text" class="form-control" name="microchip_'+petCounter+'" placeholder="15-digit ISO chip number (optional)">' +
             '</div>' +
         '</div>';
     container.appendChild(div);
@@ -65,7 +77,7 @@ function submitQuoteForm(event) {
     fd.forEach(function(value, key) { data[key] = value; });
 
     // Collect all pet entries into arrays
-    var petTypes = [], petNames = [], breeds = [], petDobs = [], travelDates = [];
+    var petTypes = [], petNames = [], breeds = [], petDobs = [], petColors = [], petGenders = [], microchips = [];
     var idx = 1;
     while (document.getElementById('pet-' + idx) || idx === 1) {
         if (idx === 1 || document.getElementById('pet-' + idx)) {
@@ -73,12 +85,16 @@ function submitQuoteForm(event) {
             var n = data['pet_name_' + idx] || data['pet_name'];
             var b = data['breed_' + idx] || data['breed'];
             var d = data['pet_dob_' + idx] || data['pet_dob'];
-            var td = data['travel_date_' + idx] || data['travel_date'];
+            var c = data['pet_color_' + idx] || data['pet_color'];
+            var g = data['pet_gender_' + idx] || data['pet_gender'];
+            var m = data['microchip_' + idx] || data['microchip'];
             if (t) petTypes.push(t);
             if (n) petNames.push(n);
             if (b) breeds.push(b);
             if (d) petDobs.push(d);
-            if (td) travelDates.push(td);
+            if (c) petColors.push(c);
+            if (g) petGenders.push(g);
+            if (m) microchips.push(m);
         }
         idx++;
         if (idx > 20) break;
@@ -89,7 +105,9 @@ function submitQuoteForm(event) {
     if (petNames.length) data.pet_name = petNames.join('|');
     if (breeds.length) data.breed = breeds.join('|');
     if (petDobs.length) data.pet_dob = petDobs.join('|');
-    if (travelDates.length) data.travel_date = travelDates.join('|');
+    if (petColors.length) data.pet_color = petColors.join('|');
+    if (petGenders.length) data.pet_gender = petGenders.join('|');
+    if (microchips.length) data.microchip = microchips.join('|');
 
     // Remove numbered sub-fields
     Object.keys(data).forEach(function(k) {
@@ -192,7 +210,7 @@ function submitQuoteForm(event) {
 
                 <!-- Pet #1 -->
                 <div class="pet-entry" id="pet-1">
-                  <div class="form-grid">
+                  <div class="form-grid" style="grid-template-columns:1fr 1fr;">
                     <div class="form-group">
                       <label>Pet Type *</label>
                       <select class="form-control" name="pet_type" required>
@@ -213,12 +231,24 @@ function submitQuoteForm(event) {
                       <input type="text" class="form-control" name="breed" placeholder="e.g., Golden Retriever">
                     </div>
                     <div class="form-group">
+                      <label>Color</label>
+                      <input type="text" class="form-control" name="pet_color" placeholder="e.g., Golden">
+                    </div>
+                    <div class="form-group">
+                      <label>Gender</label>
+                      <select class="form-control" name="pet_gender">
+                        <option value="">Select</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
                       <label>Date of Birth</label>
                       <input type="date" class="form-control" name="pet_dob">
                     </div>
-                    <div class="form-group">
-                      <label>Travel Date</label>
-                      <input type="date" class="form-control" name="travel_date">
+                    <div class="form-group full">
+                      <label>Microchip Number</label>
+                      <input type="text" class="form-control" name="microchip" placeholder="15-digit ISO chip number (optional)">
                     </div>
                   </div>
                 </div>
@@ -248,6 +278,10 @@ function submitQuoteForm(event) {
                 <div class="form-group">
                   <label>Destination City *</label>
                   <input type="text" class="form-control" name="dest_city" placeholder="e.g., Shanghai" required>
+                </div>
+                <div class="form-group">
+                  <label>Travel Date</label>
+                  <input type="date" class="form-control" name="travel_date">
                 </div>
               </div>
             </div>
