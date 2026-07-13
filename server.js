@@ -243,9 +243,10 @@ app.get('/api/regulations/airline/:id', async (req, res) => {
 // ── Quote Submission ───────────────────────────────────────────────────────
 app.post('/api/quote', async (req, res) => {
   const {
-    pet_type, pet_name, breed, pet_weight,
+    pet_type, pet_name, breed, pet_color, pet_gender, pet_dob, microchip, pet_weight,
     origin_country, origin_city, dest_country, dest_city,
     travel_date, transport_type, contact_name, email, phone, notes,
+    pickup_delivery, pickup_address, delivery_address,
     fax_only, email_addr  // honeypot
   } = req.body;
 
@@ -257,23 +258,44 @@ app.post('/api/quote', async (req, res) => {
   try {
     await query(
       `INSERT INTO quote_requests
-        (contact_name, email, phone, pet_type, pet_name, breed, pet_weight,
-         origin_country, origin_city, dest_country, dest_city, travel_date, transport_type, notes)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [contact_name, email, phone||null, pet_type||'Dog', pet_name||null, breed||null, pet_weight||null,
+        (contact_name, email, phone, pet_type, pet_name, breed, pet_color, pet_gender, pet_dob, microchip, pet_weight,
+         origin_country, origin_city, dest_country, dest_city, travel_date, transport_type,
+         pickup_delivery, pickup_address, delivery_address, notes)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [contact_name, email, phone||null, pet_type||'Dog', pet_name||null, breed||null, pet_color||null, pet_gender||null, pet_dob||null, microchip||null, pet_weight||null,
        origin_country||null, origin_city||null, dest_country||null, dest_city||null,
-       travel_date||null, transport_type||null, notes||null]
+       travel_date||null, transport_type||null,
+       pickup_delivery ? true : null, pickup_address||null, delivery_address||null, notes||null]
     );
 
     // Send email notification to admin
+    const petDetails = [
+      pet_type || 'Dog',
+      pet_name ? `Name: ${pet_name}` : null,
+      breed ? `Breed: ${breed}` : null,
+      pet_color ? `Color: ${pet_color}` : null,
+      pet_gender ? `Gender: ${pet_gender}` : null,
+      pet_dob ? `DOB: ${pet_dob}` : null,
+      microchip ? `Microchip: ${microchip}` : null,
+      pet_weight ? `Weight: ${pet_weight}` : null,
+    ].filter(Boolean).join(' | ');
+
+    let pickupInfo = '';
+    if (pickup_delivery) {
+      pickupInfo = `<p><strong>Pickup &amp; Delivery:</strong> Requested</p>` +
+        (pickup_address ? `<p><strong>Pickup Address:</strong> ${pickup_address}</p>` : '') +
+        (delivery_address ? `<p><strong>Delivery Address:</strong> ${delivery_address}</p>` : '');
+    }
+
     const adminEmailHtml = `
       <h2>New Quote Request</h2>
       <p><strong>From:</strong> ${contact_name} &lt;${email}&gt; ${phone ? ` / ${phone}` : ''}</p>
-      <p><strong>Pet:</strong> ${pet_type || 'Dog'}${pet_name ? ` — ${pet_name}` : ''}${breed ? ` (${breed})` : ''}${pet_weight ? `, ${pet_weight}` : ''}</p>
+      <p><strong>Pet:</strong> ${petDetails}</p>
       <p><strong>From:</strong> ${origin_city || 'N/A'}, ${origin_country || 'N/A'}</p>
       <p><strong>To:</strong> ${dest_city || 'N/A'}, ${dest_country || 'N/A'}</p>
       <p><strong>Travel Date:</strong> ${travel_date || 'Not specified'}</p>
       <p><strong>Transport Type:</strong> ${transport_type || 'Not specified'}</p>
+      ${pickupInfo}
       ${notes ? `<p><strong>Notes:</strong> ${notes}</p>` : ''}
       <hr><p style="color:#888;">Sent via petflyinc.com quote form</p>
     `;

@@ -169,18 +169,34 @@ function viewQuote(id) {
   html += '<div class="form-group"><label>Phone</label><span style="font-size:0.9375rem;">' + escHtml(q.phone || '—') + '</span></div>';
   html += '<div class="form-group"><label>Travel Date</label><span style="font-size:0.9375rem;">' + (q.travel_date ? fmtDate(q.travel_date) : 'Not specified') + '</span></div>';
   html += '</div>';
+
+  // Pet info
   html += '<div class="form-row">';
   html += '<div class="form-group"><label>Pet Type</label><span style="font-size:0.9375rem;">' + escHtml(q.pet_type) + '</span></div>';
-  html += '<div class="form-group"><label>Breed</label><span style="font-size:0.9375rem;">' + escHtml(q.breed || '—') + '</span></div>';
   html += '<div class="form-group"><label>Pet Name</label><span style="font-size:0.9375rem;">' + escHtml(q.pet_name || '—') + '</span></div>';
-  html += '<div class="form-group"><label>Weight</label><span style="font-size:0.9375rem;">' + escHtml(q.pet_weight || '—') + '</span></div>';
+  html += '<div class="form-group"><label>Breed</label><span style="font-size:0.9375rem;">' + escHtml(q.breed || '—') + '</span></div>';
+  html += '<div class="form-group"><label>Color</label><span style="font-size:0.9375rem;">' + escHtml(q.pet_color || '—') + '</span></div>';
+  html += '<div class="form-group"><label>Gender</label><span style="font-size:0.9375rem;">' + escHtml(q.pet_gender || '—') + '</span></div>';
+  html += '<div class="form-group"><label>Date of Birth</label><span style="font-size:0.9375rem;">' + (q.pet_dob ? fmtDate(q.pet_dob) : '—') + '</span></div>';
+  html += '<div class="form-group"><label>Microchip</label><span style="font-size:0.9375rem;">' + escHtml(q.microchip || '—') + '</span></div>';
   html += '</div>';
+
+  // Route
   html += '<div class="form-row">';
   html += '<div class="form-group"><label>Origin</label><span style="font-size:0.9375rem;">' + escHtml((q.origin_city||'') + ', ' + (q.origin_country||'')) + '</span></div>';
   html += '<div class="form-group"><label>Destination</label><span style="font-size:0.9375rem;">' + escHtml((q.dest_city||'') + ', ' + (q.dest_country||'')) + '</span></div>';
   html += '<div class="form-group"><label>Transport Type</label><span style="font-size:0.9375rem;">' + (q.transport_type ? escHtml(q.transport_type) : '—') + '</span></div>';
-  html += '<div class="form-group"><label>Referral</label><span style="font-size:0.9375rem;">' + escHtml(q.referral || '—') + '</span></div>';
   html += '</div>';
+
+  // Pickup & Delivery
+  if (q.pickup_delivery) {
+    html += '<div class="form-row">';
+    html += '<div class="form-group"><label>Pickup &amp; Delivery</label><span style="font-size:0.9375rem;color:var(--accent);">Requested</span></div>';
+    html += '<div class="form-group"><label>Pickup Address</label><span style="font-size:0.9375rem;">' + escHtml(q.pickup_address || '—') + '</span></div>';
+    html += '<div class="form-group"><label>Delivery Address</label><span style="font-size:0.9375rem;">' + escHtml(q.delivery_address || '—') + '</span></div>';
+    html += '</div>';
+  }
+
   if (q.notes) {
     html += '<div class="form-group full"><label>Notes</label><p style="font-size:0.9375rem;line-height:1.6;margin-top:0.25rem;">' + escHtml(q.notes).replace(/\n/g, '<br>') + '</p></div>';
   }
