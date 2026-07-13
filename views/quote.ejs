@@ -118,6 +118,30 @@ function submitQuoteForm(event) {
     });
 }
 </script>
+<style>
+.add-pet-btn {
+  margin-top: var(--space-sm);
+  background: transparent;
+  border: 1px dashed rgba(247, 245, 240, 0.3);
+  color: rgba(247, 245, 240, 0.6);
+  padding: 0.6rem 1rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  width: 100%;
+  font-family: var(--font-sans);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 4px;
+}
+.add-pet-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(189, 155, 90, 0.08);
+}
+</style>
 
   <!-- PAGE HEADER -->
   <section class="page-header" style="color: var(--cream);">
@@ -201,8 +225,8 @@ function submitQuoteForm(event) {
 
               </div>
 
-              <button type="button" onclick="addPetEntry()" style="margin-top: var(--space-sm); background: none; border: 1px dashed rgba(247,245,240,0.2); color: rgba(247,245,240,0.5); padding: 0.5rem 1rem; font-size: 0.8125rem; cursor: pointer; width: 100%; font-family: var(--font-sans); transition: all 0.2s;">
-                <i class="fas fa-plus" style="margin-right: 0.5rem;"></i> Add another pet
+              <button type="button" onclick="addPetEntry()" class="add-pet-btn">
+                <i class="fas fa-plus"></i> Add another pet
               </button>
             </div>
 
