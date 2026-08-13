@@ -27,8 +27,9 @@ test('includes an idempotent migration for the contracts table', () => {
 });
 
 test('applies the contract migration through the provided database connection', async () => {
-  let executedSql;
-  await ensureContractSchema({ query: async sql => { executedSql = sql; } });
+  const executedSql = [];
+  await ensureContractSchema({ query: async sql => { executedSql.push(sql); } });
 
-  assert.match(executedSql, /CREATE TABLE IF NOT EXISTS contracts/i);
+  assert.match(executedSql.join('\n'), /CREATE TABLE IF NOT EXISTS contracts/i);
+  assert.match(executedSql.join('\n'), /CREATE TABLE IF NOT EXISTS client_accounts/i);
 });
