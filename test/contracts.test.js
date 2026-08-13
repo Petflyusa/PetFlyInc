@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const { createContractNumber, canEditContract, blankContractData, calculateQuotationTotal, calculateBalance, normalizeContractData } = require('../lib/contracts');
+const { createContractNumber, canEditContract, blankContractData, calculateQuotationTotal, calculateBalance, mergeClientContractData, normalizeContractData } = require('../lib/contracts');
 
 test('creates a readable unique contract number', () => {
   assert.match(createContractNumber(new Date('2026-08-13T12:00:00Z'), 'abc123'), /^PF-20260813-ABC123$/);
@@ -39,4 +39,23 @@ test('admin contract editor provides typed options and calculated pricing', () =
   assert.match(adminScript, /calculateAdminContractTotals/);
   assert.match(adminScript, /weight_kg/);
   assert.doesNotMatch(adminScript, /kennel_size/);
+});
+
+test('keeps admin quotation and payment values when client data is merged', () => {
+  const stored = normalizeContractData({ quotation: { cargo_charge: '100' }, payment: { payment_method: 'Wire', deposit_amount: '25' } }, '2026-08-13');
+  const merged = mergeClientContractData(stored, { client: { first_name: 'Avery' }, quotation: { cargo_charge: '0' }, payment: { payment_method: 'Zelle' } });
+
+  assert.equal(merged.client.first_name, 'Avery');
+  assert.equal(merged.quotation.cargo_charge, '100');
+  assert.equal(merged.payment.payment_method, 'Zelle');
+});
+
+test('client contract editor has typed controls and locks quotation fields', () => {
+  const clientTemplate = fs.readFileSync(path.join(__dirname, '..', 'views', 'contract.ejs'), 'utf8');
+
+  assert.match(clientTemplate, /clientReadOnly/);
+  assert.match(clientTemplate, /Shipping Method/);
+  assert.match(clientTemplate, /weight_kg/);
+  assert.match(clientTemplate, /clientInput\(data,'agreement','effective_date'.*'date'/);
+  assert.doesNotMatch(clientTemplate, /kennel_size/);
 });

@@ -10,7 +10,7 @@ const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const mysql = require('mysql2/promise');
 const nodemailer = require('nodemailer');
-const { blankContractData, createContractNumber, canEditContract, normalizeContractData } = require('./lib/contracts');
+const { blankContractData, createContractNumber, canEditContract, mergeClientContractData, normalizeContractData } = require('./lib/contracts');
 const { ensureContractSchema, sendContractDatabaseError } = require('./lib/contract-database');
 const { defaultFooter } = require('./lib/site');
 
@@ -285,12 +285,12 @@ app.post('/api/contracts/:contractNumber/sign', async (req, res) => {
   const { contract_data, signature, signed_name, accepted_terms } = req.body;
   if (!accepted_terms || !signature || !signed_name) return res.status(400).json({ error: 'Your full name, signature, and acceptance are required.' });
   try {
-    const rows = await query('SELECT id, status FROM contracts WHERE contract_number = ?', [contractNumber]);
+    const rows = await query('SELECT id, status, contract_data FROM contracts WHERE contract_number = ?', [contractNumber]);
     if (!rows.length || rows[0].status === 'draft') return res.status(404).json({ error: 'Contract not found or not issued.' });
     if (!canEditContract(rows[0].status)) return res.status(409).json({ error: 'This contract has already been signed and cannot be changed.' });
     const result = await query(
       `UPDATE contracts SET contract_data=?, client_signature=?, client_signed_name=?, status='signed', signed_at=NOW() WHERE id=? AND status='issued'`,
-      [JSON.stringify(contract_data || {}), signature, signed_name.trim(), rows[0].id]
+      [JSON.stringify(mergeClientContractData(typeof rows[0].contract_data === 'string' ? JSON.parse(rows[0].contract_data) : rows[0].contract_data, contract_data || {})), signature, signed_name.trim(), rows[0].id]
     );
     if (!result.affectedRows) return res.status(409).json({ error: 'This contract has already been signed and cannot be changed.' });
     res.json({ success: true });
