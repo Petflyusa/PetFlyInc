@@ -78,7 +78,13 @@ const sessionStore = new MySQLStore({
 
 // ── Middleware ─────────────────────────────────────────────────────────────
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: 'cross-origin' }
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  // The existing EJS pages and admin SPA use inline scripts and handlers.
+  contentSecurityPolicy: {
+    directives: {
+      scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com']
+    }
+  }
 }));
 app.use(compression());
 app.use(express.json({ limit: '2mb' }));
