@@ -96,7 +96,7 @@
 
     <div class="login-error" id="loginError"></div>
 
-    <form id="loginForm" onsubmit="submitLogin(event)">
+    <form id="loginForm">
       <div class="form-group" style="margin-bottom: var(--space-md);">
         <label>Username</label>
         <input type="text" class="form-control" name="username" placeholder="Enter username" required autocomplete="username">
@@ -114,43 +114,7 @@
   </div>
 </div>
 
-<script>
-function submitLogin(event) {
-    event.preventDefault();
-    var btn = document.getElementById('loginBtn');
-    var err = document.getElementById('loginError');
-    var orig = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in...';
-    btn.disabled = true;
-    err.style.display = 'none';
-
-    var fd = new FormData(document.getElementById('loginForm'));
-    var obj = {};
-    fd.forEach(function(v, k) { obj[k] = v; });
-    fetch('/admin/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(obj)
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(d) {
-        if (d.success) {
-            window.location.href = '/admin';
-        } else {
-            err.textContent = d.error || 'Login failed';
-            err.style.display = 'block';
-            btn.innerHTML = orig;
-            btn.disabled = false;
-        }
-    })
-    .catch(function() {
-        err.textContent = 'Connection error. Please try again.';
-        err.style.display = 'block';
-        btn.innerHTML = orig;
-        btn.disabled = false;
-    });
-}
-</script>
+<script src="/js/admin-login.js"></script>
 
 </body>
 </html>
