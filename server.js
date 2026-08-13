@@ -13,7 +13,7 @@ const nodemailer = require('nodemailer');
 const { blankContractData, createContractNumber, canEditContract, mergeClientContractData, normalizeContractData } = require('./lib/contracts');
 const { ensureContractSchema, sendContractDatabaseError } = require('./lib/contract-database');
 const { generateContractPdf } = require('./lib/contract-pdf');
-const { documentExpiryStatus, isActiveRelocation, relocationSteps } = require('./lib/portal');
+const { documentCategories, documentExpiryStatus, isActiveRelocation, normalizeYouTubeUrl, relocationSteps } = require('./lib/portal');
 const { defaultFooter } = require('./lib/site');
 
 const app = express();
@@ -152,6 +152,18 @@ const contractPhotoUpload = multerModule({
   }),
   limits: { fileSize: Number(process.env.MAX_FILE_SIZE) || 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => cb(null, ['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype))
+});
+
+const relocationDocumentUpload = multerModule({
+  storage: multerModule.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadDir),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase();
+      cb(null, `relocation-document-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
+    }
+  }),
+  limits: { fileSize: Number(process.env.MAX_FILE_SIZE) || 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => cb(null, ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype))
 });
 
 // ── Auth Middleware ─────────────────────────────────────────────────────────
@@ -725,6 +737,157 @@ app.post('/api/admin/contracts/:id/issue', requireAdmin, async (req, res) => {
     await query(`UPDATE contracts SET contract_data=?, quote_request_id=?, status='issued', issued_at=COALESCE(issued_at, NOW()) WHERE id=?`, [JSON.stringify(normalizeContractData(req.body.contract_data || {})), req.body.quote_request_id || null, req.params.id]);
     res.json({ success: true });
   } catch (err) { sendContractDatabaseError(res, err); }
+});
+
+// ── Admin API: Client Relocation Portal ────────────────────────────────────
+async function contractExists(contractId) {
+  const rows = await query('SELECT id FROM contracts WHERE id=?', [contractId]);
+  return rows[0] || null;
+}
+
+function portalDateTime(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+app.get('/api/admin/contracts/:id/portal', requireAdmin, async (req, res) => {
+  try {
+    if (!await contractExists(req.params.id)) return res.status(404).json({ error: 'Contract not found.' });
+    const [accounts, updates, events, documents, boarding] = await Promise.all([
+      query(`SELECT ca.id, ca.email, ca.must_change_password FROM client_contracts cc JOIN client_accounts ca ON ca.id=cc.client_account_id WHERE cc.contract_id=?`, [req.params.id]),
+      query('SELECT id, status_step, client_note, internal_note, occurred_at FROM relocation_updates WHERE contract_id=? ORDER BY occurred_at DESC, id DESC', [req.params.id]),
+      query('SELECT id, event_type, title, description, location, starts_at FROM relocation_events WHERE contract_id=? ORDER BY starts_at ASC, id ASC', [req.params.id]),
+      query('SELECT id, category, label, file_url, issued_on, expires_on FROM relocation_documents WHERE contract_id=? ORDER BY expires_on ASC, id DESC', [req.params.id]),
+      query('SELECT id, title, youtube_id, client_note, published_at FROM boarding_updates WHERE contract_id=? ORDER BY published_at DESC, id DESC', [req.params.id])
+    ]);
+    res.json({ account: accounts[0] || null, updates, events, documents, boarding });
+  } catch (err) { sendContractDatabaseError(res, err); }
+});
+
+async function sendPortalAccessEmail(email, initialPassword) {
+  const loginUrl = `${process.env.SITE_URL || 'http://localhost:3000'}/portal/login`;
+  return sendEmail(email, 'Your Pet Fly relocation portal access', `<p>Your Pet Fly relocation portal is ready.</p><p><a href="${loginUrl}">Sign in to the client portal</a></p><p><strong>Temporary password:</strong> ${initialPassword}</p><p>You will be asked to create a new password after signing in.</p>`);
+}
+
+app.post('/api/admin/contracts/:id/portal-account', requireAdmin, async (req, res) => {
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const initialPassword = String(req.body.initial_password || '');
+  if (!email || !/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: 'Enter a valid client email.' });
+  if (initialPassword.length < 8) return res.status(400).json({ error: 'The initial password must be at least 8 characters.' });
+  try {
+    if (!await contractExists(req.params.id)) return res.status(404).json({ error: 'Contract not found.' });
+    const existing = await query('SELECT id FROM client_accounts WHERE email=?', [email]);
+    let accountId;
+    const hash = await bcrypt.hash(initialPassword, 12);
+    if (existing.length) {
+      accountId = existing[0].id;
+      await query('UPDATE client_accounts SET password_hash=?, must_change_password=TRUE WHERE id=?', [hash, accountId]);
+    } else {
+      const [result] = await pool.execute('INSERT INTO client_accounts (email, password_hash, must_change_password) VALUES (?,?,TRUE)', [email, hash]);
+      accountId = result.insertId;
+    }
+    await query('INSERT IGNORE INTO client_contracts (client_account_id, contract_id) VALUES (?,?)', [accountId, req.params.id]);
+    const emailSent = await sendPortalAccessEmail(email, initialPassword);
+    res.status(201).json({ success: true, email, email_sent: emailSent });
+  } catch (err) { sendContractDatabaseError(res, err); }
+});
+
+app.post('/api/admin/contracts/:id/portal-password-reset', requireAdmin, async (req, res) => {
+  const initialPassword = String(req.body.initial_password || '');
+  if (initialPassword.length < 8) return res.status(400).json({ error: 'The temporary password must be at least 8 characters.' });
+  try {
+    const accounts = await query(`SELECT ca.id, ca.email FROM client_contracts cc JOIN client_accounts ca ON ca.id=cc.client_account_id WHERE cc.contract_id=?`, [req.params.id]);
+    if (!accounts.length) return res.status(404).json({ error: 'No client portal account is linked to this contract.' });
+    const account = accounts[0];
+    await query('UPDATE client_accounts SET password_hash=?, must_change_password=TRUE WHERE id=?', [await bcrypt.hash(initialPassword, 12), account.id]);
+    const emailSent = await sendPortalAccessEmail(account.email, initialPassword);
+    res.json({ success: true, email_sent: emailSent });
+  } catch (err) { sendContractDatabaseError(res, err); }
+});
+
+app.post('/api/admin/contracts/:id/relocation-updates', requireAdmin, async (req, res) => {
+  const status = String(req.body.status_step || '');
+  const occurredAt = portalDateTime(req.body.occurred_at);
+  if (!relocationSteps.includes(status)) return res.status(400).json({ error: 'Select a valid relocation status.' });
+  if (!occurredAt) return res.status(400).json({ error: 'Enter a valid update date and time.' });
+  try {
+    if (!await contractExists(req.params.id)) return res.status(404).json({ error: 'Contract not found.' });
+    const [result] = await pool.execute('INSERT INTO relocation_updates (contract_id, status_step, client_note, internal_note, occurred_at) VALUES (?,?,?,?,?)', [req.params.id, status, String(req.body.client_note || '').trim() || null, String(req.body.internal_note || '').trim() || null, occurredAt]);
+    res.status(201).json({ success: true, id: result.insertId });
+  } catch (err) { sendContractDatabaseError(res, err); }
+});
+
+app.delete('/api/admin/relocation-updates/:updateId', requireAdmin, async (req, res) => {
+  try { await query('DELETE FROM relocation_updates WHERE id=?', [req.params.updateId]); res.json({ success: true }); }
+  catch (err) { sendContractDatabaseError(res, err); }
+});
+
+app.post('/api/admin/contracts/:id/events', requireAdmin, async (req, res) => {
+  const title = String(req.body.title || '').trim();
+  const startsAt = portalDateTime(req.body.starts_at);
+  if (!title || !startsAt) return res.status(400).json({ error: 'Event title and date are required.' });
+  try {
+    if (!await contractExists(req.params.id)) return res.status(404).json({ error: 'Contract not found.' });
+    const [result] = await pool.execute('INSERT INTO relocation_events (contract_id, event_type, title, description, location, starts_at) VALUES (?,?,?,?,?,?)', [req.params.id, String(req.body.event_type || 'Event').trim().slice(0, 64), title, String(req.body.description || '').trim() || null, String(req.body.location || '').trim() || null, startsAt]);
+    res.status(201).json({ success: true, id: result.insertId });
+  } catch (err) { sendContractDatabaseError(res, err); }
+});
+
+app.put('/api/admin/events/:eventId', requireAdmin, async (req, res) => {
+  const title = String(req.body.title || '').trim();
+  const startsAt = portalDateTime(req.body.starts_at);
+  if (!title || !startsAt) return res.status(400).json({ error: 'Event title and date are required.' });
+  try { await query('UPDATE relocation_events SET event_type=?, title=?, description=?, location=?, starts_at=? WHERE id=?', [String(req.body.event_type || 'Event').trim().slice(0, 64), title, String(req.body.description || '').trim() || null, String(req.body.location || '').trim() || null, startsAt, req.params.eventId]); res.json({ success: true }); }
+  catch (err) { sendContractDatabaseError(res, err); }
+});
+
+app.delete('/api/admin/events/:eventId', requireAdmin, async (req, res) => {
+  try { await query('DELETE FROM relocation_events WHERE id=?', [req.params.eventId]); res.json({ success: true }); }
+  catch (err) { sendContractDatabaseError(res, err); }
+});
+
+app.post('/api/admin/contracts/:id/documents', requireAdmin, relocationDocumentUpload.single('file'), async (req, res) => {
+  const category = String(req.body.category || '');
+  const label = String(req.body.label || '').trim();
+  if (!documentCategories.includes(category)) return res.status(400).json({ error: 'Select a valid document category.' });
+  if (!label) return res.status(400).json({ error: 'Document label is required.' });
+  try {
+    if (!await contractExists(req.params.id)) return res.status(404).json({ error: 'Contract not found.' });
+    const fileUrl = req.file ? `/uploads/${req.file.filename}` : null;
+    const [result] = await pool.execute('INSERT INTO relocation_documents (contract_id, category, label, file_url, issued_on, expires_on) VALUES (?,?,?,?,?,?)', [req.params.id, category, label, fileUrl, req.body.issued_on || null, req.body.expires_on || null]);
+    res.status(201).json({ success: true, id: result.insertId, file_url: fileUrl });
+  } catch (err) { sendContractDatabaseError(res, err); }
+});
+
+app.delete('/api/admin/documents/:documentId', requireAdmin, async (req, res) => {
+  try { await query('DELETE FROM relocation_documents WHERE id=?', [req.params.documentId]); res.json({ success: true }); }
+  catch (err) { sendContractDatabaseError(res, err); }
+});
+
+app.post('/api/admin/contracts/:id/boarding-updates', requireAdmin, async (req, res) => {
+  const title = String(req.body.title || '').trim();
+  const youtubeId = normalizeYouTubeUrl(req.body.youtube_url);
+  const publishedAt = portalDateTime(req.body.published_at);
+  if (!title || !youtubeId || !publishedAt) return res.status(400).json({ error: 'Title, valid YouTube URL, and publish date are required.' });
+  try {
+    if (!await contractExists(req.params.id)) return res.status(404).json({ error: 'Contract not found.' });
+    const [result] = await pool.execute('INSERT INTO boarding_updates (contract_id, title, youtube_id, client_note, published_at) VALUES (?,?,?,?,?)', [req.params.id, title, youtubeId, String(req.body.client_note || '').trim() || null, publishedAt]);
+    res.status(201).json({ success: true, id: result.insertId });
+  } catch (err) { sendContractDatabaseError(res, err); }
+});
+
+app.put('/api/admin/boarding-updates/:updateId', requireAdmin, async (req, res) => {
+  const title = String(req.body.title || '').trim();
+  const youtubeId = normalizeYouTubeUrl(req.body.youtube_url);
+  const publishedAt = portalDateTime(req.body.published_at);
+  if (!title || !youtubeId || !publishedAt) return res.status(400).json({ error: 'Title, valid YouTube URL, and publish date are required.' });
+  try { await query('UPDATE boarding_updates SET title=?, youtube_id=?, client_note=?, published_at=? WHERE id=?', [title, youtubeId, String(req.body.client_note || '').trim() || null, publishedAt, req.params.updateId]); res.json({ success: true }); }
+  catch (err) { sendContractDatabaseError(res, err); }
+});
+
+app.delete('/api/admin/boarding-updates/:updateId', requireAdmin, async (req, res) => {
+  try { await query('DELETE FROM boarding_updates WHERE id=?', [req.params.updateId]); res.json({ success: true }); }
+  catch (err) { sendContractDatabaseError(res, err); }
 });
 
 // TEMP DEBUG - no auth needed (for testing only)
