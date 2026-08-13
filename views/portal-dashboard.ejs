@@ -1,7 +1,10 @@
 <%- include('partials/header', { currentPage: 'portal', pageTitle: 'Relocation Portal - Pet Fly Inc' }) %>
 <style>
   .portal-page { max-width:1180px; margin:0 auto; padding:7rem 1.5rem 5rem; color:#182c3e; }
+  .portal-hero { min-height:260px; margin-bottom:2rem; padding:3.5rem 3rem; display:flex; align-items:end; color:#fff; background:linear-gradient(90deg,rgba(12,18,22,.82),rgba(12,18,22,.16)),url('/images/client-portal-hero.jpg') center 48%/cover; }
+  .portal-hero h1 { margin:.35rem 0 0; font-size:clamp(2rem,4vw,3.2rem); }
   .portal-heading { display:flex; justify-content:space-between; align-items:end; gap:1rem; padding-bottom:1.5rem; border-bottom:1px solid var(--warm-gray-300); }
+  @media (max-width:650px) { .portal-hero { min-height:230px; padding:2rem 1.25rem; } }
   .portal-heading h1 { margin:.25rem 0 0; font-size:clamp(1.8rem,3vw,2.6rem); }
   .portal-account { color:#5d5a56; font-size:.88rem; text-align:right; }
   .portal-account form { display:inline; }
@@ -53,6 +56,7 @@
 </style>
 
 <main class="portal-page">
+  <section class="portal-hero"><div><span class="section-label" style="color:#fff">Client Portal</span><h1>Your pet relocations</h1></div></section>
   <header class="portal-heading">
     <div><span class="section-label">Client Portal</span><h1>Your pet relocations</h1></div>
     <div class="portal-account"><%= clientEmail %><br><form method="post" action="/portal/logout"><button type="submit">Sign out</button></form></div>
