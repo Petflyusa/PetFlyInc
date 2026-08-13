@@ -293,11 +293,17 @@ function renderContracts() {
     el.innerHTML = '<div class="empty-state"><i class="fas fa-file-signature"></i>No contracts yet. Create one to issue a client agreement.</div>';
     return;
   }
-  var html = '<table class="data-table"><thead><tr><th>Contract No.</th><th>Client</th><th>Quote</th><th>Created</th><th>Status</th><th></th></tr></thead><tbody>';
+  var html = '<table class="data-table"><thead><tr><th>Contract No.</th><th>Client</th><th>Pet</th><th>Travel</th><th>Quote</th><th>Created</th><th>Status</th><th></th></tr></thead><tbody>';
   state.contracts.forEach(function(c) {
     var client = (c.contract_data.client || {});
+    var animal = (c.contract_data.animal || {});
+    var travel = (c.contract_data.travel || {});
+    var from = [travel.departure_city, travel.departure_country].filter(Boolean).join(', ') || '—';
+    var to = [travel.arrival_city, travel.arrival_country].filter(Boolean).join(', ') || '—';
     html += '<tr><td><strong>' + escHtml(c.contract_number) + '</strong></td>';
     html += '<td>' + escHtml([client.first_name, client.last_name].filter(Boolean).join(' ') || '—') + '<br><span style="font-size:.8125rem;color:var(--text-muted);">' + escHtml(client.email || '') + '</span></td>';
+    html += '<td><strong>' + escHtml(animal.name || '—') + '</strong><br><span style="font-size:.8125rem;color:var(--text-muted);">' + escHtml(animal.breed || animal.type || '—') + '</span></td>';
+    html += '<td><span style="font-size:.8125rem;color:var(--text-muted);">From</span> ' + escHtml(from) + '<br><span style="font-size:.8125rem;color:var(--text-muted);">To</span> ' + escHtml(to) + '<br><span style="font-size:.8125rem;color:var(--text-muted);">Expected travel:</span> ' + (travel.travel_date ? fmtDate(travel.travel_date) : '—') + '</td>';
     html += '<td>' + (c.quote_request_id ? '#' + c.quote_request_id : '—') + '</td><td>' + fmtDate(c.created_at) + '</td>';
     html += '<td><span class="status-badge ' + escHtml(c.status) + '">' + ucFirst(c.status) + '</span></td><td class="col-actions">';
     html += '<button class="btn-outline" onclick="editContract(' + c.id + ')" title="Edit"><i class="fas fa-edit"></i></button>';

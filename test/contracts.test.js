@@ -135,6 +135,18 @@ test('persists uploaded pet photos for an existing contract', () => {
   assert.match(adminScript, /form\.append\('contract_id'/);
 });
 
+test('shows pet and travel summary columns in the admin contracts list', () => {
+  const adminScript = fs.readFileSync(path.join(__dirname, '..', 'admin', 'app.js'), 'utf8');
+
+  assert.match(adminScript, /<th>Pet<\/th>/);
+  assert.match(adminScript, /<th>Travel<\/th>/);
+  assert.match(adminScript, /Expected travel:/);
+  assert.match(adminScript, /animal\.breed/);
+  assert.match(adminScript, /travel\.departure_city/);
+  assert.match(adminScript, /travel\.arrival_city/);
+  assert.match(adminScript, /travel\.travel_date/);
+});
+
 test('includes relocation portal management in the admin contract editor', () => {
   const admin = fs.readFileSync(path.join(__dirname, '..', 'admin', 'app.js'), 'utf8');
 
