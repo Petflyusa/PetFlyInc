@@ -303,6 +303,16 @@ app.post('/portal/change-password', requirePortalAccount, async (req, res) => {
   }
 });
 
+app.get('/portal', requirePortalAccount, async (req, res) => {
+  try {
+    const footer = await getFooter();
+    res.render('portal-dashboard', { footer, clientEmail: req.session.clientAccountEmail || '' });
+  } catch (err) {
+    console.error('[Portal dashboard]', err);
+    res.status(500).send('Unable to load the relocation portal right now.');
+  }
+});
+
 app.get('/api/portal/relocations', requirePortalAccount, async (req, res) => {
   try {
     const contracts = await query(`SELECT c.id, c.contract_number, c.contract_data FROM client_contracts cc JOIN contracts c ON c.id=cc.contract_id

@@ -1,0 +1,111 @@
+<%- include('partials/header', { currentPage: 'portal', pageTitle: 'Relocation Portal - Pet Fly Inc' }) %>
+<style>
+  .portal-page { max-width:1180px; margin:0 auto; padding:7rem 1.5rem 5rem; color:#182c3e; }
+  .portal-heading { display:flex; justify-content:space-between; align-items:end; gap:1rem; padding-bottom:1.5rem; border-bottom:1px solid var(--warm-gray-300); }
+  .portal-heading h1 { margin:.25rem 0 0; font-size:clamp(1.8rem,3vw,2.6rem); }
+  .portal-account { color:#5d5a56; font-size:.88rem; text-align:right; }
+  .portal-account form { display:inline; }
+  .portal-account button { border:0; background:none; color:#6b5431; text-decoration:underline; padding:0; cursor:pointer; font:inherit; }
+  .portal-layout { display:grid; grid-template-columns:280px minmax(0,1fr); gap:2rem; margin-top:2rem; }
+  .portal-rail { border-right:1px solid var(--warm-gray-300); padding-right:1.25rem; }
+  .portal-rail h2, .portal-section h2 { font-size:1.02rem; text-transform:uppercase; letter-spacing:.06em; margin:0 0 .85rem; }
+  .relocation-list { display:grid; gap:.65rem; }
+  .relocation-choice { width:100%; text-align:left; border:1px solid #c9c0b5; background:#fff; padding:.85rem; cursor:pointer; font:inherit; color:#182c3e; }
+  .relocation-choice:hover, .relocation-choice.is-selected { border-color:#6b5431; background:#f8f5ee; }
+  .relocation-choice strong, .relocation-choice span { display:block; }
+  .relocation-choice span { font-size:.78rem; color:#5d5a56; margin-top:.2rem; }
+  .portal-empty { color:#5d5a56; line-height:1.6; }
+  .portal-section { margin:0 0 2.5rem; }
+  .portal-summary { display:flex; justify-content:space-between; align-items:start; gap:1rem; }
+  .portal-summary h2 { text-transform:none; letter-spacing:0; font-size:1.45rem; margin:.15rem 0; }
+  .portal-summary p { margin:.25rem 0; color:#5d5a56; }
+  .status-label, .document-status { display:inline-block; padding:.3rem .55rem; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; background:#e8edf0; color:#182c3e; }
+  .progress-steps { display:grid; grid-template-columns:repeat(8, minmax(74px, 1fr)); gap:.35rem; overflow-x:auto; padding:1.2rem 0 .3rem; }
+  .progress-step { min-width:74px; color:#807a72; font-size:.73rem; line-height:1.35; }
+  .progress-step::before { content:""; display:block; height:6px; margin-bottom:.55rem; background:#ddd7ce; }
+  .progress-step.is-complete, .progress-step.is-current { color:#182c3e; font-weight:600; }
+  .progress-step.is-complete::before { background:#6b5431; }
+  .progress-step.is-current::before { background:#bd9b5a; }
+  .portal-columns { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:2rem; }
+  .timeline, .event-list { list-style:none; padding:0; margin:0; border-top:1px solid #ded8d0; }
+  .timeline li, .event-list li { padding:1rem 0; border-bottom:1px solid #ded8d0; }
+  .timeline time, .event-date { display:block; color:#6b5431; font-size:.78rem; margin-bottom:.25rem; }
+  .timeline strong, .event-list strong { display:block; }
+  .timeline p, .event-list p { color:#5d5a56; margin:.35rem 0 0; line-height:1.5; font-size:.9rem; white-space:pre-wrap; }
+  .document-table { width:100%; border-collapse:collapse; font-size:.9rem; }
+  .document-table th, .document-table td { text-align:left; padding:.8rem .55rem; border-bottom:1px solid #ded8d0; vertical-align:top; }
+  .document-table th { color:#5d5a56; font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; }
+  .document-status.expired { background:#f5dddd; color:#8e2020; }
+  .document-status.expiring { background:#f9ebc9; color:#74520a; }
+  .document-status.valid { background:#dfeee3; color:#24613a; }
+  .document-status.not_set { background:#e8edf0; color:#455764; }
+  .document-table a { color:#6b5431; }
+  .pet-photo-gallery { display:flex; flex-wrap:wrap; gap:.75rem; }
+  .pet-photo-gallery img { width:150px; height:112px; object-fit:cover; border:1px solid #c9c0b5; }
+  .boarding-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1rem; }
+  .boarding-card { border:1px solid #c9c0b5; padding:1rem; }
+  .boarding-card h3 { font-size:1rem; margin:0 0 .75rem; }
+  .boarding-card iframe { display:block; width:100%; aspect-ratio:16/9; border:0; }
+  .boarding-card p { font-size:.9rem; line-height:1.5; color:#5d5a56; white-space:pre-wrap; }
+  .portal-loading { padding:3rem 0; color:#5d5a56; }
+  @media (max-width:800px) { .portal-layout { grid-template-columns:1fr; } .portal-rail { border-right:0; border-bottom:1px solid var(--warm-gray-300); padding:0 0 1.25rem; } .relocation-list { grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); } .portal-columns { grid-template-columns:1fr; } }
+  @media (max-width:560px) { .portal-page { padding:6rem 1rem 3rem; } .portal-heading { align-items:start; flex-direction:column; } .portal-account { text-align:left; } .document-table { min-width:650px; } .document-wrap { overflow-x:auto; } }
+</style>
+
+<main class="portal-page">
+  <header class="portal-heading">
+    <div><span class="section-label">Client Portal</span><h1>Your pet relocations</h1></div>
+    <div class="portal-account"><%= clientEmail %><br><form method="post" action="/portal/logout"><button type="submit">Sign out</button></form></div>
+  </header>
+  <div class="portal-layout">
+    <aside class="portal-rail"><h2>Active Relocations</h2><div id="relocationList" class="relocation-list"></div></aside>
+    <section id="portalContent" aria-live="polite"><p class="portal-loading">Loading your relocation details...</p></section>
+  </div>
+</main>
+
+<script>
+  (function () {
+    var relocationList = document.getElementById('relocationList');
+    var portalContent = document.getElementById('portalContent');
+    var currentId = null;
+    var statuses = ['Consulting', 'Contract Signed', 'Pick-Up', 'Exam/Vaccination', 'Documentation', 'On Route', 'In-Transfer', 'Home Delivery'];
+    var categories = ['Rabies Vaccination', 'Other Vaccination', 'Exam Reports', 'Other Reports', 'Travel Documents', 'Other Documents', 'Client Identifications'];
+
+    function text(value) { return value == null || value === '' ? 'Not provided' : String(value); }
+    function formatDate(value, includeTime) { if (!value) return 'Not set'; var date = new Date(value); return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString(undefined, includeTime ? { dateStyle:'medium', timeStyle:'short' } : { dateStyle:'medium' }); }
+    function appendText(parent, tag, value, className) { var node = document.createElement(tag); if (className) node.className = className; node.textContent = value; parent.appendChild(node); return node; }
+    function empty(message) { var p = document.createElement('p'); p.className = 'portal-empty'; p.textContent = message; return p; }
+    function section(title) { var block = document.createElement('section'); block.className = 'portal-section'; appendText(block, 'h2', title); return block; }
+    function statusIndex(status) { var index = statuses.indexOf(status); return index < 0 ? 0 : index; }
+
+    function renderRelocations(relocations) {
+      relocationList.replaceChildren();
+      if (!relocations.length) { relocationList.appendChild(empty('No issued relocations are connected to this account yet.')); portalContent.replaceChildren(empty('Your relocation details will appear here once Pet Fly issues a contract to this account.')); return; }
+      relocations.forEach(function (relocation) {
+        var button = document.createElement('button'); button.type = 'button'; button.className = 'relocation-choice' + (relocation.id === currentId ? ' is-selected' : '');
+        appendText(button, 'strong', text(relocation.pet_name)); appendText(button, 'span', text(relocation.route)); appendText(button, 'span', relocation.contract_number + ' | ' + text(relocation.current_status));
+        button.addEventListener('click', function () { loadDetail(relocation.id); }); relocationList.appendChild(button);
+      });
+    }
+
+    function renderProgress(detail) {
+      var block = section('Relocation Progress'); var summary = document.createElement('div'); summary.className = 'portal-summary';
+      var intro = document.createElement('div'); appendText(intro, 'h2', text(detail.contract_data && detail.contract_data.animal && detail.contract_data.animal.name)); appendText(intro, 'p', detail.contract_number); summary.appendChild(intro);
+      appendText(summary, 'span', text(detail.current_status), 'status-label'); block.appendChild(summary);
+      var steps = document.createElement('div'); steps.className = 'progress-steps'; var current = statusIndex(detail.current_status);
+      statuses.forEach(function (status, index) { var item = document.createElement('div'); item.className = 'progress-step' + (index < current ? ' is-complete' : index === current ? ' is-current' : ''); item.textContent = status; steps.appendChild(item); });
+      block.appendChild(steps); return block;
+    }
+
+    function renderUpdates(updates) { var block = section('Relocation Timeline'); var list = document.createElement('ol'); list.className = 'timeline'; if (!updates.length) return (block.appendChild(empty('Updates from Pet Fly will appear here.')), block); updates.forEach(function (update) { var item = document.createElement('li'); appendText(item, 'time', formatDate(update.occurred_at, true)); appendText(item, 'strong', text(update.status_step)); if (update.client_note) appendText(item, 'p', update.client_note); list.appendChild(item); }); block.appendChild(list); return block; }
+    function renderEvents(events) { var block = section('Upcoming Events'); var list = document.createElement('ul'); list.className = 'event-list'; var upcoming = events.filter(function (event) { return new Date(event.starts_at).getTime() >= Date.now(); }); if (!upcoming.length) return (block.appendChild(empty('There are no upcoming events scheduled.')), block); upcoming.forEach(function (event) { var item = document.createElement('li'); appendText(item, 'span', formatDate(event.starts_at, true), 'event-date'); appendText(item, 'strong', text(event.title)); var details = [event.location, event.description].filter(Boolean).join('\n'); if (details) appendText(item, 'p', details); list.appendChild(item); }); block.appendChild(list); return block; }
+    function renderDocuments(documents) { var block = section('Documents'); var wrap = document.createElement('div'); wrap.className = 'document-wrap'; var table = document.createElement('table'); table.className = 'document-table'; table.innerHTML = '<thead><tr><th>Category</th><th>Document</th><th>Issued</th><th>Expires</th><th>Status</th><th>File</th></tr></thead>'; var body = document.createElement('tbody'); if (!documents.length) { var row = document.createElement('tr'); var cell = document.createElement('td'); cell.colSpan = 6; cell.textContent = 'No documents have been added yet.'; row.appendChild(cell); body.appendChild(row); } documents.forEach(function (document) { var row = document.createElement('tr'); [document.category, document.label, formatDate(document.issued_on), formatDate(document.expires_on)].forEach(function (value) { var cell = document.createElement('td'); cell.textContent = text(value); row.appendChild(cell); }); var statusCell = document.createElement('td'); appendText(statusCell, 'span', text(document.expiry_status).replace('_', ' '), 'document-status ' + text(document.expiry_status)); row.appendChild(statusCell); var fileCell = document.createElement('td'); if (document.file_url) { var link = document.createElement('a'); link.href = document.file_url; link.target = '_blank'; link.rel = 'noopener'; link.textContent = 'View'; fileCell.appendChild(link); } else fileCell.textContent = 'Not uploaded'; row.appendChild(fileCell); body.appendChild(row); }); table.appendChild(body); wrap.appendChild(table); block.appendChild(wrap); return block; }
+    function renderPhotos(detail) { var photos = detail.contract_data && detail.contract_data.animal && Array.isArray(detail.contract_data.animal.photos) ? detail.contract_data.animal.photos : []; if (!photos.length) return null; var block = section('Pet Photos'); var gallery = document.createElement('div'); gallery.className = 'pet-photo-gallery'; photos.forEach(function (url) { var image = document.createElement('img'); image.src = url; image.alt = 'Pet photo'; image.loading = 'lazy'; gallery.appendChild(image); }); block.appendChild(gallery); return block; }
+    function renderBoarding(boarding) { var block = section('Boarding Updates'); if (!boarding.length) { block.appendChild(empty('No boarding video updates have been posted.')); return block; } var grid = document.createElement('div'); grid.className = 'boarding-grid'; boarding.forEach(function (update) { if (!/^[A-Za-z0-9_-]{11}$/.test(update.youtube_id || '')) return; var card = document.createElement('article'); card.className = 'boarding-card'; appendText(card, 'h3', text(update.title)); var iframe = document.createElement('iframe'); iframe.src = 'https://www.youtube-nocookie.com/embed/' + update.youtube_id; iframe.title = text(update.title); iframe.loading = 'lazy'; iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'; iframe.allowFullscreen = true; card.appendChild(iframe); if (update.client_note) appendText(card, 'p', update.client_note); grid.appendChild(card); }); block.appendChild(grid.childElementCount ? grid : empty('No valid boarding video updates are available.')); return block; }
+    function renderDetail(detail) { portalContent.replaceChildren(); portalContent.appendChild(renderProgress(detail)); var columns = document.createElement('div'); columns.className = 'portal-columns'; columns.appendChild(renderUpdates(detail.updates || [])); columns.appendChild(renderEvents(detail.events || [])); portalContent.appendChild(columns); portalContent.appendChild(renderDocuments(detail.documents || [])); var photos = renderPhotos(detail); if (photos) portalContent.appendChild(photos); portalContent.appendChild(renderBoarding(detail.boarding || [])); }
+    async function loadDetail(id) { currentId = id; portalContent.replaceChildren(empty('Loading relocation details...')); try { var response = await fetch('/api/portal/relocations/' + encodeURIComponent(id)); var payload = await response.json(); if (!response.ok) throw new Error(payload.error || 'Unable to load this relocation.'); renderRelocations(window.portalRelocations || []); renderDetail(payload.relocation); } catch (error) { portalContent.replaceChildren(empty(error.message || 'Unable to load this relocation.')); } }
+    async function init() { try { var response = await fetch('/api/portal/relocations'); var payload = await response.json(); if (!response.ok) throw new Error(payload.error || 'Unable to load your relocations.'); window.portalRelocations = payload.relocations || []; currentId = window.portalRelocations[0] && window.portalRelocations[0].id; renderRelocations(window.portalRelocations); if (currentId) loadDetail(currentId); } catch (error) { relocationList.replaceChildren(empty('Unable to load your relocations.')); portalContent.replaceChildren(empty(error.message || 'Please refresh and try again.')); } }
+    init();
+  }());
+</script>
+<%- include('partials/footer', { footer: footer || { company_name: 'Pet Fly Inc' } }) %>
