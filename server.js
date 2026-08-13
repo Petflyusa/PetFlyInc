@@ -10,6 +10,7 @@ const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const mysql = require('mysql2/promise');
 const nodemailer = require('nodemailer');
+const { createContractNumber, canEditContract } = require('./lib/contracts');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -204,6 +205,12 @@ app.get('/regulations', async (req, res) => {
   }
 });
 
+// Public contract access begins with a contract-number lookup.
+app.get('/contract', async (req, res) => {
+  const footer = await getFooter();
+  res.render('contract', { footer });
+});
+
 // ── PUBLIC API ────────────────────────────────────────────────────────────
 
 // Countries list (for regulations page)
@@ -237,6 +244,34 @@ app.get('/api/regulations/airline/:id', async (req, res) => {
     const rows = await query('SELECT * FROM airlines WHERE id = ?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: 'Airline not found' });
     res.json(rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── Public Contract API ───────────────────────────────────────────────────
+app.get('/api/contracts/:contractNumber', async (req, res) => {
+  try {
+    const rows = await query('SELECT id, contract_number, status, contract_data, client_signature, client_signed_name, signed_at FROM contracts WHERE contract_number = ?', [req.params.contractNumber.trim().toUpperCase()]);
+    if (!rows.length || rows[0].status === 'draft') return res.status(404).json({ error: 'Contract not found or not issued.' });
+    const contract = rows[0];
+    contract.contract_data = typeof contract.contract_data === 'string' ? JSON.parse(contract.contract_data) : contract.contract_data;
+    res.json({ contract });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/contracts/:contractNumber/sign', async (req, res) => {
+  const contractNumber = req.params.contractNumber.trim().toUpperCase();
+  const { contract_data, signature, signed_name, accepted_terms } = req.body;
+  if (!accepted_terms || !signature || !signed_name) return res.status(400).json({ error: 'Your full name, signature, and acceptance are required.' });
+  try {
+    const rows = await query('SELECT id, status FROM contracts WHERE contract_number = ?', [contractNumber]);
+    if (!rows.length || rows[0].status === 'draft') return res.status(404).json({ error: 'Contract not found or not issued.' });
+    if (!canEditContract(rows[0].status)) return res.status(409).json({ error: 'This contract has already been signed and cannot be changed.' });
+    const result = await query(
+      `UPDATE contracts SET contract_data=?, client_signature=?, client_signed_name=?, status='signed', signed_at=NOW() WHERE id=? AND status='issued'`,
+      [JSON.stringify(contract_data || {}), signature, signed_name.trim(), rows[0].id]
+    );
+    if (!result.affectedRows) return res.status(409).json({ error: 'This contract has already been signed and cannot be changed.' });
+    res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -471,6 +506,82 @@ app.patch('/api/admin/contacts/:id', requireAdmin, async (req, res) => {
 app.delete('/api/admin/contacts/:id', requireAdmin, async (req, res) => {
   try {
     await query('DELETE FROM contact_messages WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── Admin API: Contracts ───────────────────────────────────────────────────
+function blankContractData() {
+  return {
+    agreement: { effective_date: '' },
+    client: { first_name: '', last_name: '', address: '', city_state_zip: '', phone: '', email: '' },
+    animal: { name: '', type: '', breed: '', gender: '', dob: '', weight: '', color: '', microchip: '', length: '', height: '', kennel_size: '' },
+    travel: { departure_country: '', departure_state: '', departure_city: '', arrival_country: '', arrival_state: '', arrival_city: '', travel_date: '', airline_flight: '', transfer_city: '' },
+    shipment: { pickup_name_address_phone: '', consignee_name_address_phone: '', arrival_date: '' },
+    quotation: { shipping_method: '', cargo_charge: '', vaccination: '', documentation: '', customs_service: '', quarantine: '', other_service: '', total_cost: '' },
+    payment: { payee: '', deposit_amount: '', deposit_due: '', balance_amount: '', balance_due: '', transfer_fee: '' },
+    carrier: { representative_name: '', representative_signature: '', office_address: '12101 Clark St Unit F, Arcadia, CA 91007', email: 'petflyusa@hotmail.com', website: 'www.petsrelocation.com', office_phone: '661-505-0707', cell_phone: '323-285-9939' }
+  };
+}
+
+function contractDataFromQuote(quote) {
+  const data = blankContractData();
+  if (!quote) return data;
+  data.client = { first_name: quote.contact_name || '', last_name: '', address: quote.pickup_address || '', city_state_zip: '', phone: quote.phone || '', email: quote.email || '' };
+  data.animal = { ...data.animal, name: quote.pet_name || '', type: quote.pet_type || '', breed: quote.breed || '', gender: quote.pet_gender || '', dob: quote.pet_dob || '', weight: quote.pet_weight || '', color: quote.pet_color || '', microchip: quote.microchip || '' };
+  data.travel = { ...data.travel, departure_country: quote.origin_country || '', departure_city: quote.origin_city || '', arrival_country: quote.dest_country || '', arrival_city: quote.dest_city || '', travel_date: quote.travel_date || '' };
+  data.shipment.pickup_name_address_phone = [quote.contact_name, quote.pickup_address, quote.phone].filter(Boolean).join('\n');
+  return data;
+}
+
+app.get('/api/admin/contracts', requireAdmin, async (req, res) => {
+  try {
+    const contracts = await query(`SELECT c.id, c.contract_number, c.quote_request_id, c.status, c.contract_data, c.issued_at, c.signed_at, c.created_at,
+      q.contact_name AS quote_contact_name FROM contracts c LEFT JOIN quote_requests q ON q.id=c.quote_request_id ORDER BY c.created_at DESC`);
+    contracts.forEach(contract => { contract.contract_data = typeof contract.contract_data === 'string' ? JSON.parse(contract.contract_data) : contract.contract_data; });
+    res.json({ contracts });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/admin/contracts/quotes/:id', requireAdmin, async (req, res) => {
+  try {
+    const rows = await query('SELECT * FROM quote_requests WHERE id=?', [req.params.id]);
+    if (!rows.length) return res.status(404).json({ error: 'Quote not found' });
+    res.json({ contract_data: contractDataFromQuote(rows[0]), quote_request_id: rows[0].id });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/admin/contracts', requireAdmin, async (req, res) => {
+  const data = req.body.contract_data || blankContractData();
+  const quoteId = req.body.quote_request_id || null;
+  try {
+    let contractNumber;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      contractNumber = createContractNumber();
+      const existing = await query('SELECT id FROM contracts WHERE contract_number=?', [contractNumber]);
+      if (!existing.length) break;
+    }
+    const [result] = await pool.execute('INSERT INTO contracts (contract_number, quote_request_id, contract_data) VALUES (?,?,?)', [contractNumber, quoteId, JSON.stringify(data)]);
+    res.status(201).json({ success: true, id: result.insertId, contract_number: contractNumber });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/admin/contracts/:id', requireAdmin, async (req, res) => {
+  try {
+    const rows = await query('SELECT status FROM contracts WHERE id=?', [req.params.id]);
+    if (!rows.length) return res.status(404).json({ error: 'Contract not found' });
+    if (!canEditContract(rows[0].status)) return res.status(409).json({ error: 'Signed contracts are immutable.' });
+    await query('UPDATE contracts SET contract_data=?, quote_request_id=? WHERE id=?', [JSON.stringify(req.body.contract_data || {}), req.body.quote_request_id || null, req.params.id]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/admin/contracts/:id/issue', requireAdmin, async (req, res) => {
+  try {
+    const rows = await query('SELECT status FROM contracts WHERE id=?', [req.params.id]);
+    if (!rows.length) return res.status(404).json({ error: 'Contract not found' });
+    if (!canEditContract(rows[0].status)) return res.status(409).json({ error: 'Signed contracts are immutable.' });
+    await query(`UPDATE contracts SET contract_data=?, quote_request_id=?, status='issued', issued_at=COALESCE(issued_at, NOW()) WHERE id=?`, [JSON.stringify(req.body.contract_data || {}), req.body.quote_request_id || null, req.params.id]);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

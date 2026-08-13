@@ -30,6 +30,9 @@
         <i class="fas fa-envelope"></i> Contact Messages
         <span class="badge" id="badgeContacts">0</span>
       </button>
+      <button class="nav-btn" data-section="contracts" onclick="showSection('contracts')">
+        <i class="fas fa-file-signature"></i> Contracts
+      </button>
       <button class="nav-btn" data-section="content" onclick="showSection('content')">
         <i class="fas fa-edit"></i> Landing Content
       </button>
@@ -110,6 +113,15 @@
       <div id="contactsTable"></div>
     </section>
 
+    <!-- Contracts -->
+    <section id="section-contracts" class="admin-section">
+      <div class="section-header">
+        <h1>Contracts</h1>
+        <button class="btn-primary-sm" onclick="newContract()"><i class="fas fa-plus"></i> New Contract</button>
+      </div>
+      <div id="contractsTable"></div>
+    </section>
+
     <!-- Landing Content -->
     <section id="section-content" class="admin-section">
       <div class="section-header">
@@ -151,6 +163,6 @@
   </div>
 </div>
 
-<script src="/admin/app.js?v=4"></script>
+<script src="/admin/app.js?v=5"></script>
 </body>
 </html>

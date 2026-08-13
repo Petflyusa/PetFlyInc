@@ -7,7 +7,8 @@ var state = {
   contacts: [],
   content: {},
   countries: [],
-  airlines: []
+  airlines: [],
+  contracts: []
 };
 
 var toastTimeout;
@@ -52,6 +53,7 @@ function showSection(name) {
   if (name === 'dashboard') loadDashboard();
   if (name === 'quotes') loadQuotes();
   if (name === 'contacts') loadContacts();
+  if (name === 'contracts') loadContracts();
   if (name === 'content') loadLandingContent();
   if (name === 'countries') loadCountries();
   if (name === 'airlines') loadAirlines();
@@ -275,6 +277,70 @@ async function deleteContact(id) {
   loadContacts();
   loadDashboard();
 }
+
+// ── Contracts ──────────────────────────────────────────────────────────────
+async function loadContracts() {
+  try {
+    var d = await (await fetch('/api/admin/contracts', creds)).json();
+    state.contracts = d.contracts || [];
+    renderContracts();
+  } catch (err) { console.error(err); showToast('Could not load contracts', 'error'); }
+}
+
+function renderContracts() {
+  var el = document.getElementById('contractsTable');
+  if (!state.contracts.length) {
+    el.innerHTML = '<div class="empty-state"><i class="fas fa-file-signature"></i>No contracts yet. Create one to issue a client agreement.</div>';
+    return;
+  }
+  var html = '<table class="data-table"><thead><tr><th>Contract No.</th><th>Client</th><th>Quote</th><th>Created</th><th>Status</th><th></th></tr></thead><tbody>';
+  state.contracts.forEach(function(c) {
+    var client = (c.contract_data.client || {});
+    html += '<tr><td><strong>' + escHtml(c.contract_number) + '</strong></td>';
+    html += '<td>' + escHtml([client.first_name, client.last_name].filter(Boolean).join(' ') || '—') + '<br><span style="font-size:.8125rem;color:var(--text-muted);">' + escHtml(client.email || '') + '</span></td>';
+    html += '<td>' + (c.quote_request_id ? '#' + c.quote_request_id : '—') + '</td><td>' + fmtDate(c.created_at) + '</td>';
+    html += '<td><span class="status-badge ' + escHtml(c.status) + '">' + ucFirst(c.status) + '</span></td><td class="col-actions">';
+    html += '<button class="btn-outline" onclick="editContract(' + c.id + ')" title="' + (c.status === 'signed' ? 'View' : 'Edit') + '"><i class="fas ' + (c.status === 'signed' ? 'fa-eye' : 'fa-edit') + '"></i></button>';
+    if (c.status === 'draft') html += ' <button class="btn-success" onclick="issueContract(' + c.id + ')" title="Issue contract"><i class="fas fa-paper-plane"></i></button>';
+    if (c.status !== 'draft') html += ' <button class="btn-outline" onclick="copyContractLink(\'' + escHtml(c.contract_number) + '\')" title="Copy client link"><i class="fas fa-link"></i></button>';
+    html += '</td></tr>';
+  });
+  el.innerHTML = html + '</tbody></table>';
+}
+
+function emptyContract() {
+  return { agreement:{effective_date:''}, client:{first_name:'',last_name:'',address:'',city_state_zip:'',phone:'',email:''}, animal:{name:'',type:'',breed:'',gender:'',dob:'',weight:'',color:'',microchip:'',length:'',height:'',kennel_size:''}, travel:{departure_country:'',departure_state:'',departure_city:'',arrival_country:'',arrival_state:'',arrival_city:'',travel_date:'',airline_flight:'',transfer_city:''}, shipment:{pickup_name_address_phone:'',consignee_name_address_phone:'',arrival_date:''}, quotation:{shipping_method:'',cargo_charge:'',vaccination:'',documentation:'',customs_service:'',quarantine:'',other_service:'',total_cost:''}, payment:{payee:'',deposit_amount:'',deposit_due:'',balance_amount:'',balance_due:'',transfer_fee:''}, carrier:{representative_name:'',representative_signature:'',office_address:'12101 Clark St Unit F, Arcadia, CA 91007',email:'petflyusa@hotmail.com',website:'www.petsrelocation.com',office_phone:'661-505-0707',cell_phone:'323-285-9939'} };
+}
+var contractGroups = [
+  ['Agreement','agreement',[['effective_date','Contract Effective Date']]],
+  ['Client Information','client',[['first_name','First Name'],['last_name','Last Name'],['address','Street Address'],['city_state_zip','City / State / ZIP'],['phone','Phone'],['email','Email']]],
+  ['Animal Information','animal',[['name',"Pet's Name"],['type',"Pet's Type"],['breed','Breed'],['gender','Gender'],['dob','Date of Birth'],['weight','Weight'],['color','Color'],['microchip','Microchip'],['length','Length (inches)'],['height','Height (inches)'],['kennel_size','Kennel Size']]],
+  ['Travel Details','travel',[['departure_country','Departure Country'],['departure_state','Departure State / Province'],['departure_city','Departure City / Airport'],['arrival_country','Arrival Country'],['arrival_state','Arrival State / Province'],['arrival_city','Arrival City / Airport'],['travel_date','Travel Date'],['airline_flight','Airline / Flight'],['transfer_city','Transfer City']]],
+  ['Shipment and Delivery','shipment',[['pickup_name_address_phone','Pickup Name / Address / Phone','textarea'],['consignee_name_address_phone','Consignee Name / Address / Phone','textarea'],['arrival_date','Arrival Date']]],
+  ['Service Quotation','quotation',[['shipping_method','Shipping Method'],['cargo_charge','Cargo Charge'],['vaccination','Vaccination'],['documentation','Documentation'],['customs_service','Customs Service'],['quarantine','Quarantine'],['other_service','Other Service'],['total_cost','Total Cost']]],
+  ['Payment','payment',[['payee','Payee / Appointed Representative'],['deposit_amount','Deposit Amount'],['deposit_due','Deposit Due Date'],['balance_amount','Remaining Balance'],['balance_due','Balance Due Date'],['transfer_fee','Transfer Fee if applicable']]],
+  ['Carrier Details','carrier',[['representative_name','Representative Name'],['representative_signature','Representative Signature / Name'],['office_address','Office Address'],['email','Email'],['website','Website'],['office_phone','Office Phone'],['cell_phone','Cell Phone']]]
+];
+function contractEditorHtml(contract) {
+  contract = contract || { contract_data:emptyContract(), quote_request_id:'', status:'draft' };
+  var data = contract.contract_data || emptyContract();
+  var locked = contract.status === 'signed';
+  var html = '<input type="hidden" id="fContractId" value="' + (contract.id || '') + '"><input type="hidden" id="fContractStatus" value="' + escHtml(contract.status || 'draft') + '">';
+  html += '<div class="form-group full"><label>Import quote (optional)</label><select class="field-input" id="fContractQuote" onchange="importQuoteToContract(this.value)" ' + (locked ? 'disabled' : '') + '><option value="">Start without a quote</option></select></div>';
+  if (contract.contract_number) html += '<p style="margin-bottom:1rem;color:var(--accent);"><strong>Contract number:</strong> ' + escHtml(contract.contract_number) + '</p>';
+  contractGroups.forEach(function(g) { html += '<h3 style="margin:1.5rem 0 .75rem;color:var(--cream);">' + g[0] + '</h3><div class="form-row">'; g[2].forEach(function(f) { var v=(data[g[1]]||{})[f[0]]||''; html += '<div class="form-group"><label>' + f[1] + '</label>' + (f[2] === 'textarea' ? '<textarea class="field-textarea contract-input" data-group="'+g[1]+'" data-field="'+f[0]+'" '+(locked?'readonly':'')+'>'+escHtml(v)+'</textarea>' : '<input class="field-input contract-input" data-group="'+g[1]+'" data-field="'+f[0]+'" value="'+escHtml(v)+'" '+(locked?'readonly':'')+'>') + '</div>'; }); html += '</div>'; });
+  if (locked) html += '<div class="form-actions"><button class="btn-outline" onclick="closeModal()">Close</button></div>';
+  else html += '<div class="form-actions"><button class="btn-outline" onclick="closeModal()">Cancel</button><button class="btn-primary-sm" onclick="saveContract(false)">Save Draft</button><button class="btn-success" onclick="saveContract(true)">Save & Issue</button></div>';
+  return html;
+}
+async function newContract() { openModal('New Contract', contractEditorHtml()); await populateContractQuotes(); }
+async function editContract(id) { var c=state.contracts.find(function(x){return x.id===id;}); if(!c)return; openModal((c.status==='signed'?'Signed':'Edit')+' Contract',contractEditorHtml(c)); await populateContractQuotes(c.quote_request_id); }
+async function populateContractQuotes(selected) { try { var d=await (await fetch('/api/admin/quotes',creds)).json(); var s=document.getElementById('fContractQuote'); (d.quotes||[]).forEach(function(q){var o=document.createElement('option');o.value=q.id;o.textContent='#'+q.id+' — '+q.contact_name+' ('+q.email+')';o.selected=String(q.id)===String(selected||'');s.appendChild(o);}); } catch(e){console.error(e);} }
+async function importQuoteToContract(id) { if(!id)return; var r=await fetch('/api/admin/contracts/quotes/'+id,creds),d=await r.json();if(!r.ok){showToast(d.error||'Could not import quote','error');return;} document.getElementById('modalBody').innerHTML=contractEditorHtml({contract_data:d.contract_data,quote_request_id:id,status:'draft',id:document.getElementById('fContractId').value}); await populateContractQuotes(id); }
+function collectContractData() { var d=emptyContract(); document.querySelectorAll('.contract-input').forEach(function(el){d[el.dataset.group][el.dataset.field]=el.value;}); return d; }
+async function saveContract(issue) { var id=document.getElementById('fContractId').value, payload={contract_data:collectContractData(),quote_request_id:document.getElementById('fContractQuote').value||null}; var url=id?'/api/admin/contracts/'+id:'/api/admin/contracts',method=id?'PUT':'POST'; try { var r=await fetch(url,{...creds,method:method,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}),d=await r.json();if(!r.ok)throw new Error(d.error); var contractId=id||d.id;if(issue){r=await fetch('/api/admin/contracts/'+contractId+'/issue',{...creds,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});d=await r.json();if(!r.ok)throw new Error(d.error);showToast('Contract issued: '+(id?'':' '+d.contract_number),'success');}else showToast('Contract draft saved','success');closeModal();loadContracts(); } catch(e){showToast(e.message||'Could not save contract','error');} }
+async function issueContract(id) { var c=state.contracts.find(function(x){return x.id===id;});if(!c)return; openModal('Issue Contract',contractEditorHtml(c)); await populateContractQuotes(c.quote_request_id); }
+function copyContractLink(number) { var link=window.location.origin+'/contract'; navigator.clipboard.writeText(link); showToast('Client link copied. Give the client contract number '+number,'success'); }
 
 // ── Landing Content ─────────────────────────────────────────────────────────
 async function loadLandingContent() {

@@ -1,0 +1,99 @@
+<%- include('partials/header', { currentPage: 'contract' }) %>
+
+<style>
+  .contract-page { max-width: 1050px; margin: 0 auto; padding: 7rem 1.5rem 5rem; }
+  .contract-lookup { max-width: 620px; margin: 2rem auto; padding: 2.5rem; border: 1px solid var(--warm-gray-300); background: #fff; text-align: center; }
+  .contract-lookup input { width: 100%; padding: .9rem 1rem; border: 1px solid var(--warm-gray-300); font: inherit; margin: 1rem 0; text-transform: uppercase; }
+  .contract-document { display:none; background:#fff; color:#222; border:1px solid var(--warm-gray-300); padding:clamp(1.25rem,4vw,4rem); }
+  .contract-document.is-visible { display:block; }
+  .contract-heading { border-bottom:2px solid #182c3e; padding-bottom:1.5rem; margin-bottom:2rem; }
+  .contract-heading h1 { font-size:clamp(1.8rem,4vw,2.8rem); margin:.2rem 0; color:#182c3e; }
+  .contract-number { font-family:monospace; font-size:1rem; color:#6b5431; }
+  .contract-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem 1.5rem; }
+  .contract-section { margin:2rem 0; }
+  .contract-section h2 { font-size:1.15rem; text-transform:uppercase; letter-spacing:.06em; border-bottom:1px solid #c9c0b5; padding-bottom:.6rem; color:#182c3e; }
+  .contract-field { display:flex; flex-direction:column; gap:.35rem; }
+  .contract-field label { font-size:.76rem; text-transform:uppercase; letter-spacing:.05em; color:#5d5a56; }
+  .contract-field input, .contract-field textarea { padding:.6rem; font:inherit; border:1px solid #bdb5ab; background:#fff; color:#111; }
+  .contract-field textarea { min-height:80px; resize:vertical; }
+  .contract-terms h3 { font-size:1rem; margin:1.6rem 0 .4rem; color:#182c3e; }
+  .contract-terms p { font-size:.93rem; line-height:1.65; }
+  .signature-pad { border:1px solid #998b7b; height:155px; width:100%; touch-action:none; background:#fff; }
+  .signature-actions { display:flex; align-items:center; gap:.75rem; margin-top:.6rem; }
+  .contract-actions { display:flex; justify-content:flex-end; gap:1rem; margin-top:2.5rem; border-top:1px solid #c9c0b5; padding-top:1.5rem; }
+  .signed-notice { background:#e5f0e7; border-left:4px solid #367149; padding:1rem; margin:1rem 0 2rem; }
+  .signed-signature { max-width:360px; max-height:155px; display:block; margin:1rem 0; border-bottom:1px solid #998b7b; }
+  .error-message { color:#a02d2d; min-height:1.5rem; }
+  @media (max-width:650px) { .contract-grid { grid-template-columns:1fr; } .contract-page { padding:6rem 1rem 3rem; } }
+</style>
+
+<main class="contract-page">
+  <div class="contract-lookup" id="contractLookup">
+    <span class="section-label">Client Contract</span>
+    <h1>Access your agreement</h1>
+    <p>Enter the contract number provided by Pet Fly Inc.</p>
+    <input id="contractNumber" aria-label="Contract number" placeholder="PF-YYYYMMDD-XXXXXX" autocomplete="off">
+    <button class="btn-primary" type="button" onclick="findContract()">Open Contract <i class="fas fa-arrow-right"></i></button>
+    <p id="lookupError" class="error-message"></p>
+  </div>
+
+  <form class="contract-document" id="contractDocument" onsubmit="signContract(event)">
+    <div class="contract-heading">
+      <span class="section-label">Pet Fly International Animal Travel Inc</span>
+      <h1>International Animal Transportation Contract</h1>
+      <div class="contract-number">Contract No. <strong id="displayContractNumber"></strong></div>
+    </div>
+    <div id="signedNotice" class="signed-notice" style="display:none;"></div>
+    <div id="signedSignature" style="display:none;"></div>
+    <div id="contractFields"></div>
+    <section class="contract-section contract-terms">
+      <h2>Terms and Conditions</h2>
+      <h3>Description of Service</h3><p>Pet Fly will provide transportation service for the live animal described in this contract, beginning on the effective date and according to the service quotation and travel details above.</p>
+      <h3>Payments</h3><p>Payments shall be made to Pet Fly or its appointed representative in the amounts and by the due dates stated above. A shipment requiring transfer service to another international location may require an additional transfer fee. Failure to pay when due is a material breach; Pet Fly may cancel this agreement and/or seek legal remedies.</p>
+      <h3>Performance of Service</h3><p>Carrier shall promptly and efficiently receive, ship, and deliver the live animal safely within the agreed schedule. The consignee shall be present at delivery. Carrier will comply with applicable provincial, federal, state, and local laws, rules, regulations, and industry standards.</p>
+      <h3>Term</h3><p>This contract terminates automatically upon Pet Fly's completion of the services required by this contract.</p>
+      <h3>Insurance</h3><p>Carrier shall maintain commercial general liability, cargo liability, and any government-required insurance during this agreement, and shall provide a certificate of insurance when required. Such insurance shall not be canceled or materially altered until at least thirty days after written notice to Client.</p>
+      <h3>Indemnification</h3><p>Pet Fly agrees to indemnify and hold Client harmless from claims, losses, expenses, fees including attorney fees, costs, and judgments resulting from the acts or omissions of Pet Fly or its employees, agents, or representatives.</p>
+      <h3>Exclusive Control</h3><p>Carrier has sole and exclusive control over the manner in which it and its agents perform shipping services, including personnel selection, discharge, discipline, and control. Carrier is independent and not substantially economically dependent upon Client.</p>
+      <h3>Health and Safety</h3><p>Carrier is responsible for ensuring each carrier employee, driver, or worker receives orientation to job duties and safety requirements before assignment. No worker will be placed on equipment or instructed to perform duties without the skill or training to do so safely.</p>
+      <h3>Permits</h3><p>Carrier has obtained or shall obtain at its sole expense all permits, licenses, certificates, authorities, and approvals required by law for performance of this agreement, and will provide reasonable written notice of any revocation or suspension action.</p>
+      <h3>Warranty</h3><p>Pet Fly will provide services in a timely and workmanlike manner, using knowledge and recommendations meeting generally acceptable standards in its community and region, with care equal to or superior to that used by similar service providers.</p>
+      <h3>Default and Remedies</h3><p>Material default includes failure to make a required payment, insolvency or bankruptcy, levy or seizure of property, or failure to make available or deliver services in the agreed time and manner. The non-defaulting party may give written notice describing the default. The receiving party has three days from the notice's effective date to cure it; failure to cure results in automatic termination unless waived.</p>
+      <h3>Force Majeure</h3><p>Performance prevented, restricted, or interfered with by causes beyond reasonable control is suspended to the necessary extent if prompt written notice is given. Force majeure includes acts of God, fire, explosion, vandalism, storms, governmental or military acts, emergencies, insurrections, riots, wars, strikes, lock-outs, work stoppages, labor disputes, and supplier failures. The excused party will use reasonable efforts to remove the cause and resume performance.</p>
+      <h3>Entire Agreement and Amendment</h3><p>This agreement contains the entire agreement of the parties and supersedes prior written or oral agreements on this subject. It may be modified or amended only in writing signed by the party obligated under the amendment.</p>
+      <h3>Arbitration</h3><p>Controversies or disputes arising from this agreement shall be resolved by binding arbitration under the then-current commercial arbitration rules of the American Arbitration Association. The arbitrator(s) may not modify this contract or award punitive damages. The decision is final and binding, and judgment may be entered in a court of competent jurisdiction. The parties will continue their respective obligations during arbitration.</p>
+      <h3>Severability</h3><p>If any provision is held invalid or unenforceable, the remaining provisions remain valid and enforceable. A provision may be limited as necessary to become valid and enforceable.</p>
+      <h3>Governing Law, Notice, and Waiver</h3><p>This agreement is construed under the laws of the State of California. Notices must be delivered in person or by certified mail, return receipt requested, to the addresses in this agreement or another address furnished in writing. Failure to enforce a provision is not a waiver of the right to later enforce strict compliance.</p>
+    </section>
+    <section class="contract-section" id="signatureSection">
+      <h2>Client Signature</h2>
+      <div class="contract-field"><label for="signedName">Full legal name</label><input id="signedName" required></div>
+      <div class="contract-field" style="margin-top:1rem;"><label>Draw your signature</label><canvas class="signature-pad" id="signaturePad"></canvas></div>
+      <div class="signature-actions"><button type="button" class="btn-outline" onclick="clearSignature()">Clear signature</button><span id="signatureError" class="error-message"></span></div>
+      <label style="display:flex;gap:.65rem;align-items:flex-start;margin-top:1.2rem;"><input type="checkbox" id="acceptTerms" required style="margin-top:.25rem;"> <span>I have reviewed this contract, confirm the information I provided is accurate, and agree to all terms and conditions.</span></label>
+    </section>
+    <div class="contract-actions" id="contractActions"><button class="btn-primary" type="submit">Sign and Submit Contract</button></div>
+  </form>
+</main>
+
+<script>
+var currentContract = null, signatureCanvas, signatureContext, signatureDrawn = false;
+var fields = [
+  ['Agreement','agreement',[['effective_date','Contract Effective Date']]],
+  ['Client Information','client',[['first_name','First Name'],['last_name','Last Name'],['address','Street Address'],['city_state_zip','City / State / ZIP'],['phone','Phone'],['email','Email']]],
+  ['Animal Information','animal',[['name',"Pet's Name"],['type',"Pet's Type"],['breed','Breed'],['gender','Gender'],['dob','Date of Birth'],['weight','Weight'],['color','Color'],['microchip','Microchip'],['length','Animal Length (inches)'],['height','Animal Height (inches)'],['kennel_size','Kennel Size']]],
+  ['Travel Details','travel',[['departure_country','Departure Country'],['departure_state','Departure State / Province'],['departure_city','Departure City / Airport'],['arrival_country','Arrival Country'],['arrival_state','Arrival State / Province'],['arrival_city','Arrival City / Airport'],['travel_date','Travel Date'],['airline_flight','Airline / Flight'],['transfer_city','Transfer City']]],
+  ['Shipment and Delivery','shipment',[['pickup_name_address_phone','Pickup Name / Address / Phone','textarea'],['consignee_name_address_phone','Consignee Name / Address / Phone','textarea'],['arrival_date','Arrival Date']]],
+  ['Service Quotation','quotation',[['shipping_method','Shipping Method'],['cargo_charge','Cargo Charge'],['vaccination','Vaccination'],['documentation','Documentation'],['customs_service','Customs Service'],['quarantine','Quarantine'],['other_service','Other Service'],['total_cost','Total Cost']]],
+  ['Payment','payment',[['payee','Payee / Appointed Representative'],['deposit_amount','Deposit Amount'],['deposit_due','Deposit Due Date'],['balance_amount','Remaining Balance'],['balance_due','Balance Due Date'],['transfer_fee','Transfer Fee, if applicable']]],
+  ['Carrier Details','carrier',[['representative_name','Pet Fly Representative'],['representative_signature','Representative Signature / Name'],['office_address','Office Address'],['email','Email'],['website','Website'],['office_phone','Office Phone'],['cell_phone','Cell Phone']]]
+];
+function esc(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+function renderFields(data, readOnly) { var html=''; fields.forEach(function(section){ html += '<section class="contract-section"><h2>'+section[0]+'</h2><div class="contract-grid">'; section[2].forEach(function(f){ var value=(data[section[1]]||{})[f[0]]||''; html += '<div class="contract-field"><label>'+f[1]+'</label>' + (f[2] === 'textarea' ? '<textarea data-group="'+section[1]+'" data-field="'+f[0]+'" '+(readOnly?'readonly':'')+'>'+esc(value)+'</textarea>' : '<input data-group="'+section[1]+'" data-field="'+f[0]+'" value="'+esc(value)+'" '+(readOnly?'readonly':'')+'>') + '</div>'; }); html += '</div></section>'; }); document.getElementById('contractFields').innerHTML=html; }
+async function findContract() { var number=document.getElementById('contractNumber').value.trim().toUpperCase(); var error=document.getElementById('lookupError'); error.textContent=''; if(!number){error.textContent='Enter your contract number.';return;} try { var r=await fetch('/api/contracts/'+encodeURIComponent(number)); var d=await r.json(); if(!r.ok) throw new Error(d.error); currentContract=d.contract; document.getElementById('displayContractNumber').textContent=currentContract.contract_number; document.getElementById('contractLookup').style.display='none'; document.getElementById('contractDocument').classList.add('is-visible'); var signed=currentContract.status==='signed'; renderFields(currentContract.contract_data||{}, signed); if(signed){document.getElementById('signatureSection').style.display='none';document.getElementById('contractActions').style.display='none'; var n=document.getElementById('signedNotice');n.style.display='block';n.textContent='Signed by '+currentContract.client_signed_name+' on '+new Date(currentContract.signed_at).toLocaleString()+'. This signed contract is locked.';var sig=document.getElementById('signedSignature');sig.style.display='block';sig.innerHTML='<h2>Client Signature</h2><img class="signed-signature" src="'+currentContract.client_signature+'" alt="Client signature">';} else { setupSignature(); } } catch(e){error.textContent=e.message||'Could not open contract.';} }
+function setupSignature(){ signatureCanvas=document.getElementById('signaturePad'); var rect=signatureCanvas.getBoundingClientRect(); signatureCanvas.width=rect.width*devicePixelRatio;signatureCanvas.height=rect.height*devicePixelRatio; signatureContext=signatureCanvas.getContext('2d');signatureContext.scale(devicePixelRatio,devicePixelRatio);signatureContext.strokeStyle='#1f2e3a';signatureContext.lineWidth=2;signatureContext.lineCap='round';var drawing=false;function point(e){var b=signatureCanvas.getBoundingClientRect(),p=e.touches?e.touches[0]:e;return {x:p.clientX-b.left,y:p.clientY-b.top};}function start(e){drawing=true;var p=point(e);signatureContext.beginPath();signatureContext.moveTo(p.x,p.y);e.preventDefault();}function move(e){if(!drawing)return;var p=point(e);signatureContext.lineTo(p.x,p.y);signatureContext.stroke();signatureDrawn=true;e.preventDefault();}function end(){drawing=false;} signatureCanvas.onpointerdown=start;signatureCanvas.onpointermove=move;signatureCanvas.onpointerup=end;signatureCanvas.onpointerleave=end; }
+function clearSignature(){if(signatureContext){signatureContext.clearRect(0,0,signatureCanvas.width,signatureCanvas.height);signatureDrawn=false;}}
+function collectContract(){var d=JSON.parse(JSON.stringify(currentContract.contract_data||{}));document.querySelectorAll('[data-group]').forEach(function(el){d[el.dataset.group]=d[el.dataset.group]||{};d[el.dataset.group][el.dataset.field]=el.value;});return d;}
+async function signContract(e){e.preventDefault();if(!signatureDrawn){document.getElementById('signatureError').textContent='A drawn signature is required.';return;}var r=await fetch('/api/contracts/'+encodeURIComponent(currentContract.contract_number)+'/sign',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contract_data:collectContract(),signature:signatureCanvas.toDataURL('image/png'),signed_name:document.getElementById('signedName').value,accepted_terms:document.getElementById('acceptTerms').checked})});var d=await r.json();if(!r.ok){document.getElementById('signatureError').textContent=d.error||'Could not submit contract.';return;}window.location.reload();}
+</script>
+<%- include('partials/footer', { footer: footer }) %>
