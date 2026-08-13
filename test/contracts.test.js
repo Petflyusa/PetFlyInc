@@ -126,6 +126,15 @@ test('supports admin pet photo uploads and client-side photo display', () => {
   assert.match(clientTemplate, /pet-photo-gallery/);
 });
 
+test('persists uploaded pet photos for an existing contract', () => {
+  const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  const adminScript = fs.readFileSync(path.join(__dirname, '..', 'admin', 'app.js'), 'utf8');
+
+  assert.match(server, /req\.body\.contract_id/);
+  assert.match(server, /UPDATE contracts SET contract_data=/);
+  assert.match(adminScript, /form\.append\('contract_id'/);
+});
+
 test('includes relocation portal management in the admin contract editor', () => {
   const admin = fs.readFileSync(path.join(__dirname, '..', 'admin', 'app.js'), 'utf8');
 

@@ -692,10 +692,22 @@ app.get('/api/admin/contracts', requireAdmin, async (req, res) => {
   } catch (err) { sendContractDatabaseError(res, err); }
 });
 
-app.post('/api/admin/contract-photos', requireAdmin, contractPhotoUpload.array('photos', 5), (req, res) => {
+app.post('/api/admin/contract-photos', requireAdmin, contractPhotoUpload.array('photos', 5), async (req, res) => {
   const photos = (req.files || []).map(file => `/uploads/${file.filename}`);
   if (!photos.length) return res.status(400).json({ error: 'Upload up to five JPG, PNG, or WebP pet photos.' });
-  res.status(201).json({ photos });
+  const contractId = Number.parseInt(req.body.contract_id, 10);
+  try {
+    if (contractId) {
+      const rows = await query('SELECT contract_data FROM contracts WHERE id=?', [contractId]);
+      if (!rows.length) return res.status(404).json({ error: 'Contract not found.' });
+      const data = typeof rows[0].contract_data === 'string' ? JSON.parse(rows[0].contract_data) : rows[0].contract_data;
+      const existing = Array.isArray(data && data.animal && data.animal.photos) ? data.animal.photos : [];
+      const normalized = normalizeContractData({ ...data, animal: { ...(data.animal || {}), photos: [...existing, ...photos].slice(0, 5) } });
+      await query('UPDATE contracts SET contract_data=? WHERE id=?', [JSON.stringify(normalized), contractId]);
+      return res.status(201).json({ photos, all_photos: normalized.animal.photos });
+    }
+    res.status(201).json({ photos, all_photos: photos });
+  } catch (err) { sendContractDatabaseError(res, err); }
 });
 
 app.get('/api/admin/contracts/quotes/:id', requireAdmin, async (req, res) => {
