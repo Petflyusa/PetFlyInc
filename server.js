@@ -10,7 +10,7 @@ const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const mysql = require('mysql2/promise');
 const nodemailer = require('nodemailer');
-const { createContractNumber, canEditContract } = require('./lib/contracts');
+const { blankContractData, createContractNumber, canEditContract, normalizeContractData } = require('./lib/contracts');
 const { ensureContractSchema, sendContractDatabaseError } = require('./lib/contract-database');
 const { defaultFooter } = require('./lib/site');
 
@@ -533,19 +533,6 @@ app.delete('/api/admin/contacts/:id', requireAdmin, async (req, res) => {
 });
 
 // ── Admin API: Contracts ───────────────────────────────────────────────────
-function blankContractData() {
-  return {
-    agreement: { effective_date: '' },
-    client: { first_name: '', last_name: '', address: '', city_state_zip: '', phone: '', email: '' },
-    animal: { name: '', type: '', breed: '', gender: '', dob: '', weight: '', color: '', microchip: '', length: '', height: '', kennel_size: '' },
-    travel: { departure_country: '', departure_state: '', departure_city: '', arrival_country: '', arrival_state: '', arrival_city: '', travel_date: '', airline_flight: '', transfer_city: '' },
-    shipment: { pickup_name_address_phone: '', consignee_name_address_phone: '', arrival_date: '' },
-    quotation: { shipping_method: '', cargo_charge: '', vaccination: '', documentation: '', customs_service: '', quarantine: '', other_service: '', total_cost: '' },
-    payment: { payee: '', deposit_amount: '', deposit_due: '', balance_amount: '', balance_due: '', transfer_fee: '' },
-    carrier: { representative_name: '', representative_signature: '', office_address: '12101 Clark St Unit F, Arcadia, CA 91007', email: 'petflyusa@hotmail.com', website: 'www.petsrelocation.com', office_phone: '661-505-0707', cell_phone: '323-285-9939' }
-  };
-}
-
 function contractDataFromQuote(quote) {
   const data = blankContractData();
   if (!quote) return data;
@@ -574,7 +561,7 @@ app.get('/api/admin/contracts/quotes/:id', requireAdmin, async (req, res) => {
 });
 
 app.post('/api/admin/contracts', requireAdmin, async (req, res) => {
-  const data = req.body.contract_data || blankContractData();
+  const data = normalizeContractData(req.body.contract_data || blankContractData());
   const quoteId = req.body.quote_request_id || null;
   try {
     let contractNumber;
@@ -593,7 +580,7 @@ app.put('/api/admin/contracts/:id', requireAdmin, async (req, res) => {
     const rows = await query('SELECT status FROM contracts WHERE id=?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: 'Contract not found' });
     if (!canEditContract(rows[0].status)) return res.status(409).json({ error: 'Signed contracts are immutable.' });
-    await query('UPDATE contracts SET contract_data=?, quote_request_id=? WHERE id=?', [JSON.stringify(req.body.contract_data || {}), req.body.quote_request_id || null, req.params.id]);
+    await query('UPDATE contracts SET contract_data=?, quote_request_id=? WHERE id=?', [JSON.stringify(normalizeContractData(req.body.contract_data || {})), req.body.quote_request_id || null, req.params.id]);
     res.json({ success: true });
   } catch (err) { sendContractDatabaseError(res, err); }
 });
@@ -603,7 +590,7 @@ app.post('/api/admin/contracts/:id/issue', requireAdmin, async (req, res) => {
     const rows = await query('SELECT status FROM contracts WHERE id=?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: 'Contract not found' });
     if (!canEditContract(rows[0].status)) return res.status(409).json({ error: 'Signed contracts are immutable.' });
-    await query(`UPDATE contracts SET contract_data=?, quote_request_id=?, status='issued', issued_at=COALESCE(issued_at, NOW()) WHERE id=?`, [JSON.stringify(req.body.contract_data || {}), req.body.quote_request_id || null, req.params.id]);
+    await query(`UPDATE contracts SET contract_data=?, quote_request_id=?, status='issued', issued_at=COALESCE(issued_at, NOW()) WHERE id=?`, [JSON.stringify(normalizeContractData(req.body.contract_data || {})), req.body.quote_request_id || null, req.params.id]);
     res.json({ success: true });
   } catch (err) { sendContractDatabaseError(res, err); }
 });
