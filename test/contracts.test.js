@@ -125,3 +125,13 @@ test('supports admin pet photo uploads and client-side photo display', () => {
   assert.match(clientTemplate, /animal\.photos/);
   assert.match(clientTemplate, /pet-photo-gallery/);
 });
+
+test('includes relocation portal management in the admin contract editor', () => {
+  const admin = fs.readFileSync(path.join(__dirname, '..', 'admin', 'app.js'), 'utf8');
+
+  assert.match(admin, /Relocation Portal/);
+  assert.match(admin, /savePortalAccount/);
+  assert.match(admin, /addRelocationUpdate/);
+  assert.match(admin, /addRelocationDocument/);
+  assert.match(admin, /addBoardingUpdate/);
+});
