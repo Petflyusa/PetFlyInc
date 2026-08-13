@@ -11,6 +11,7 @@ const bcrypt = require('bcryptjs');
 const mysql = require('mysql2/promise');
 const nodemailer = require('nodemailer');
 const { createContractNumber, canEditContract } = require('./lib/contracts');
+const { defaultFooter } = require('./lib/site');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -147,7 +148,7 @@ async function getLandingSection(key) {
 
 async function getFooter() {
   const ft = await getLandingSection('footer');
-  return ft || { email: 'info@petflyinc.com', phone: '+1 (555) 123-4567', hours: 'Mon—Fri: 9AM — 6PM PST' };
+  return ft || defaultFooter();
 }
 
 async function setLandingSection(key, data) {
@@ -207,7 +208,12 @@ app.get('/regulations', async (req, res) => {
 
 // Public contract access begins with a contract-number lookup.
 app.get('/contract', async (req, res) => {
-  const footer = await getFooter();
+  let footer;
+  try { footer = await getFooter(); }
+  catch (err) {
+    console.error('[Contract] Could not load footer content:', err.message);
+    footer = defaultFooter();
+  }
   res.render('contract', { footer });
 });
 
