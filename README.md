@@ -16,6 +16,7 @@ Visit `http://localhost:3000`
 
 - **Landing pages:** `/`, `/service`, `/quote`, `/contact`, `/regulations`
 - **Admin panel:** `/admin` (login: `admin` / `petfly2026` — change this immediately)
+- **Client relocation portal:** `/portal/login`
 
 ## Project Structure
 
@@ -59,10 +60,16 @@ Tables:
 - `countries` — country import regulations
 - `airlines` — airline pet transport policies
 - `landing_content` — key/value JSON for landing page sections
+- `client_accounts` and `client_contracts` — client login accounts and their assigned relocations
+- `relocation_updates`, `relocation_events`, `relocation_documents`, and `boarding_updates` — portal content managed by admins
 
 ## Admin Panel
 
 Manage landing page content, view/manage quote requests and contact messages, add/edit country and airline regulations — all from a single-page admin SPA at `/admin`.
+
+Issued and signed contracts also have a **Manage Portal** action. Use it to create or reset a client password, add progress updates, schedule events, publish document records, and add YouTube boarding videos. An account can be linked to multiple active contracts, so a client signs in once to see all assigned relocations. The client must replace an admin-issued temporary password on first sign-in.
+
+Set `SITE_URL=https://petflyinc.com` in production so access emails point to the public site. The portal stores document and pet-photo files in `public/uploads`, which must be persistent across Hostinger deployments. Boarding videos use YouTube embeds and do not consume Hostinger video storage.
 
 ## Deployment (Vercel)
 
@@ -86,6 +93,8 @@ npm install --production
 mysql -u root -p < schema.sql
 pm2 restart server   # or: node server.js
 ```
+
+The portal migration runs automatically when `server.js` starts. Restart the Node process after deployment so it creates the portal tables before using the portal.
 
 Recommended: use PM2 for process management:
 ```bash

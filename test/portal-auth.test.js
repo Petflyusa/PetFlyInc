@@ -20,9 +20,10 @@ test('points public client login links to the portal', () => {
 
 test('scopes portal relocation queries to the signed-in account and omits internal notes', () => {
   const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  const clientDetailRoute = server.slice(server.indexOf("app.get('/api/portal/relocations/:contractId'"), server.indexOf('// ── PUBLIC API'));
 
-  assert.match(server, /FROM client_contracts cc JOIN contracts c ON c\.id=cc\.contract_id/);
-  assert.match(server, /WHERE cc\.client_account_id=\?/);
-  assert.match(server, /SELECT id, status_step, client_note, occurred_at FROM relocation_updates/);
-  assert.doesNotMatch(server, /SELECT[^;]*internal_note[^;]*FROM relocation_updates/);
+  assert.match(clientDetailRoute, /FROM client_contracts cc JOIN contracts c ON c\.id=cc\.contract_id/);
+  assert.match(clientDetailRoute, /WHERE cc\.client_account_id=\?/);
+  assert.match(clientDetailRoute, /SELECT id, status_step, client_note, occurred_at FROM relocation_updates/);
+  assert.doesNotMatch(clientDetailRoute, /SELECT[^;]*internal_note[^;]*FROM relocation_updates/);
 });
