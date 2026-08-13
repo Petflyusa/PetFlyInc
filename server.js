@@ -141,6 +141,18 @@ const upload = multerModule({
   }
 });
 
+const contractPhotoUpload = multerModule({
+  storage: multerModule.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadDir),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase();
+      cb(null, `contract-photo-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
+    }
+  }),
+  limits: { fileSize: Number(process.env.MAX_FILE_SIZE) || 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => cb(null, ['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype))
+});
+
 // ── Auth Middleware ─────────────────────────────────────────────────────────
 function requireAdmin(req, res, next) {
   if (req.session && req.session.adminId) return next();
@@ -570,6 +582,12 @@ app.get('/api/admin/contracts', requireAdmin, async (req, res) => {
     contracts.forEach(contract => { contract.contract_data = typeof contract.contract_data === 'string' ? JSON.parse(contract.contract_data) : contract.contract_data; });
     res.json({ contracts });
   } catch (err) { sendContractDatabaseError(res, err); }
+});
+
+app.post('/api/admin/contract-photos', requireAdmin, contractPhotoUpload.array('photos', 5), (req, res) => {
+  const photos = (req.files || []).map(file => `/uploads/${file.filename}`);
+  if (!photos.length) return res.status(400).json({ error: 'Upload up to five JPG, PNG, or WebP pet photos.' });
+  res.status(201).json({ photos });
 });
 
 app.get('/api/admin/contracts/quotes/:id', requireAdmin, async (req, res) => {

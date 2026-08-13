@@ -110,3 +110,18 @@ test('keeps signed contracts editable in the admin editor and admin API', () => 
   assert.doesNotMatch(server, /app\.put\('\/api\/admin\/contracts\/:id'[\s\S]*?Signed contracts are immutable\./);
   assert.doesNotMatch(server, /app\.post\('\/api\/admin\/contracts\/:id\/issue'[\s\S]*?Signed contracts are immutable\./);
 });
+
+test('supports admin pet photo uploads and client-side photo display', () => {
+  const adminScript = fs.readFileSync(path.join(__dirname, '..', 'admin', 'app.js'), 'utf8');
+  const clientTemplate = fs.readFileSync(path.join(__dirname, '..', 'views', 'contract.ejs'), 'utf8');
+  const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  const defaults = blankContractData('2026-08-13');
+
+  assert.deepEqual(defaults.animal.photos, []);
+  assert.match(server, /app\.post\('\/api\/admin\/contract-photos', requireAdmin, contractPhotoUpload\.array\('photos', 5\)/);
+  assert.match(server, /image\/jpeg/);
+  assert.match(adminScript, /uploadContractPhotos/);
+  assert.match(adminScript, /animal\.photos/);
+  assert.match(clientTemplate, /animal\.photos/);
+  assert.match(clientTemplate, /pet-photo-gallery/);
+});
