@@ -22,4 +22,5 @@ test('admin login uses an external script so Helmet CSP allows submission', () =
 test('legacy admin actions are permitted by the Content Security Policy', () => {
   const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
   assert.match(server, /scriptSrc:\s*\["'self'",\s*"'unsafe-inline'"/);
+  assert.match(server, /scriptSrcAttr:\s*\["'unsafe-inline'"\]/);
 });

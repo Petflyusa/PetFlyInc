@@ -82,7 +82,8 @@ app.use(helmet({
   // The existing EJS pages and admin SPA use inline scripts and handlers.
   contentSecurityPolicy: {
     directives: {
-      scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com']
+      scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com'],
+      scriptSrcAttr: ["'unsafe-inline'"]
     }
   }
 }));
