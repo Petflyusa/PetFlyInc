@@ -1,9 +1,7 @@
 <%- include('partials/header', { currentPage: 'contract' }) %>
 
 <style>
-  .contract-page { max-width: 1050px; margin: 0 auto; padding: 7rem 1.5rem 5rem; }
-  .contract-hero { min-height:260px; margin-bottom:2rem; padding:3.5rem 3rem; display:flex; align-items:end; color:#fff; background:linear-gradient(90deg,rgba(12,18,22,.84),rgba(12,18,22,.18)),url('/images/contract-hero.jpg') center 45%/cover; }
-  .contract-hero h1 { margin:.35rem 0 0; font-size:clamp(2rem,4vw,3.2rem); }
+  .contract-page { max-width: 1050px; margin: 0 auto; padding: var(--space-xl) 1.5rem 5rem; }
   .contract-lookup { max-width: 620px; margin: 2rem auto; padding: 2.5rem; border: 1px solid var(--warm-gray-300); background: #fff; text-align: center; }
   .contract-lookup input { width: 100%; padding: .9rem 1rem; border: 1px solid var(--warm-gray-300); font: inherit; margin: 1rem 0; text-transform: uppercase; }
   .contract-document { display:none; background:#fff; color:#222; border:1px solid var(--warm-gray-300); padding:clamp(1.25rem,4vw,4rem); }
@@ -30,11 +28,11 @@
   .signed-notice { background:#e5f0e7; border-left:4px solid #367149; padding:1rem; margin:1rem 0 2rem; }
   .signed-signature { max-width:360px; max-height:155px; display:block; margin:1rem 0; border-bottom:1px solid #998b7b; }
   .error-message { color:#a02d2d; min-height:1.5rem; }
-  @media (max-width:650px) { .contract-grid, .contract-route, .contract-schedule { grid-template-columns:1fr; } .contract-page { padding:6rem 1rem 3rem; } .contract-hero { min-height:230px; padding:2rem 1.25rem; } }
+  @media (max-width:650px) { .contract-grid, .contract-route, .contract-schedule { grid-template-columns:1fr; } .contract-page { padding:var(--space-lg) 1rem 3rem; } }
 </style>
 
+<section class="page-header"><img class="page-header-video" src="/images/contract-hero.jpg" alt="Pet travel contract"><div class="page-header-overlay"></div><div class="container"><span class="section-label">Client Contract</span><h1>Access your agreement</h1><p>Review and complete your Pet Fly international animal transportation agreement.</p></div></section>
 <main class="contract-page">
-  <section class="contract-hero"><div><span class="section-label" style="color:#fff">Client Contract</span><h1>Access your agreement</h1></div></section>
   <div class="contract-lookup" id="contractLookup">
     <p>Enter the contract number provided by Pet Fly Inc.</p>
     <input id="contractNumber" aria-label="Contract number" placeholder="PF-YYYYMMDD-XXXXXX" autocomplete="off">
