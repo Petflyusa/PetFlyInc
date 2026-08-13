@@ -135,6 +135,13 @@ test('persists uploaded pet photos for an existing contract', () => {
   assert.match(adminScript, /form\.append\('contract_id'/);
 });
 
+test('serves uploaded contract photos from the configured persistent upload directory', () => {
+  const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+
+  assert.match(server, /process\.env\.UPLOAD_DIR/);
+  assert.match(server, /app\.use\('\/uploads', express\.static\(uploadDir\)\)/);
+});
+
 test('shows pet and travel summary columns in the admin contracts list', () => {
   const adminScript = fs.readFileSync(path.join(__dirname, '..', 'admin', 'app.js'), 'utf8');
 

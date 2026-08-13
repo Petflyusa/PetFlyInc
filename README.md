@@ -69,7 +69,7 @@ Manage landing page content, view/manage quote requests and contact messages, ad
 
 Issued and signed contracts also have a **Manage Portal** action. Use it to create or reset a client password, add progress updates, schedule events, publish document records, and add YouTube boarding videos. An account can be linked to multiple active contracts, so a client signs in once to see all assigned relocations. The client must replace an admin-issued temporary password on first sign-in.
 
-Set `SITE_URL=https://petflyinc.com` in production so access emails point to the public site. The portal stores document and pet-photo files in `public/uploads`, which must be persistent across Hostinger deployments. Boarding videos use YouTube embeds and do not consume Hostinger video storage.
+Set `SITE_URL=https://petflyinc.com` in production so access emails point to the public site. Configure `UPLOAD_DIR` to a writable directory outside the Git-synced Hostinger deployment folder (for example, `/home/u884869254/uploads`, after confirming the path in hPanel). The portal stores document and pet-photo files there and serves them at `/uploads/...`; keeping those files outside the deployment directory prevents Git deployments from deleting them. Boarding videos use YouTube embeds and do not consume Hostinger video storage.
 
 ## Deployment (Vercel)
 
