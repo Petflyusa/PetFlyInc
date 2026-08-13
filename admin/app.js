@@ -300,7 +300,7 @@ function renderContracts() {
     html += '<td>' + escHtml([client.first_name, client.last_name].filter(Boolean).join(' ') || '—') + '<br><span style="font-size:.8125rem;color:var(--text-muted);">' + escHtml(client.email || '') + '</span></td>';
     html += '<td>' + (c.quote_request_id ? '#' + c.quote_request_id : '—') + '</td><td>' + fmtDate(c.created_at) + '</td>';
     html += '<td><span class="status-badge ' + escHtml(c.status) + '">' + ucFirst(c.status) + '</span></td><td class="col-actions">';
-    html += '<button class="btn-outline" onclick="editContract(' + c.id + ')" title="' + (c.status === 'signed' ? 'View' : 'Edit') + '"><i class="fas ' + (c.status === 'signed' ? 'fa-eye' : 'fa-edit') + '"></i></button>';
+    html += '<button class="btn-outline" onclick="editContract(' + c.id + ')" title="Edit"><i class="fas fa-edit"></i></button>';
     if (c.status === 'draft') html += ' <button class="btn-success" onclick="issueContract(' + c.id + ')" title="Issue contract"><i class="fas fa-paper-plane"></i></button>';
     if (c.status !== 'draft') html += ' <button class="btn-outline" onclick="copyContractLink(\'' + escHtml(c.contract_number) + '\')" title="Copy client link"><i class="fas fa-link"></i></button>';
     html += '</td></tr>';
@@ -341,7 +341,7 @@ function contractSection(title, body) { return '<h3 style="margin:1.5rem 0 .75re
 function contractEditorHtml(contract) {
   contract = contract || { contract_data:emptyContract(), quote_request_id:'', status:'draft' };
   var data = contract.contract_data || emptyContract();
-  var locked = contract.status === 'signed';
+  var locked = false;
   var html = '<input type="hidden" id="fContractId" value="' + (contract.id || '') + '"><input type="hidden" id="fContractStatus" value="' + escHtml(contract.status || 'draft') + '">';
   html += '<div class="form-group full"><label>Import quote (optional)</label><select class="field-input" id="fContractQuote" onchange="importQuoteToContract(this.value)" ' + (locked ? 'disabled' : '') + '><option value="">Start without a quote</option></select></div>';
   if (contract.contract_number) html += '<p style="margin-bottom:1rem;color:var(--accent);"><strong>Contract number:</strong> ' + escHtml(contract.contract_number) + '</p>';

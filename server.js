@@ -599,7 +599,6 @@ app.put('/api/admin/contracts/:id', requireAdmin, async (req, res) => {
   try {
     const rows = await query('SELECT status FROM contracts WHERE id=?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: 'Contract not found' });
-    if (!canEditContract(rows[0].status)) return res.status(409).json({ error: 'Signed contracts are immutable.' });
     await query('UPDATE contracts SET contract_data=?, quote_request_id=? WHERE id=?', [JSON.stringify(normalizeContractData(req.body.contract_data || {})), req.body.quote_request_id || null, req.params.id]);
     res.json({ success: true });
   } catch (err) { sendContractDatabaseError(res, err); }
@@ -609,7 +608,6 @@ app.post('/api/admin/contracts/:id/issue', requireAdmin, async (req, res) => {
   try {
     const rows = await query('SELECT status FROM contracts WHERE id=?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: 'Contract not found' });
-    if (!canEditContract(rows[0].status)) return res.status(409).json({ error: 'Signed contracts are immutable.' });
     await query(`UPDATE contracts SET contract_data=?, quote_request_id=?, status='issued', issued_at=COALESCE(issued_at, NOW()) WHERE id=?`, [JSON.stringify(normalizeContractData(req.body.contract_data || {})), req.body.quote_request_id || null, req.params.id]);
     res.json({ success: true });
   } catch (err) { sendContractDatabaseError(res, err); }

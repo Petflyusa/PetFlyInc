@@ -9,7 +9,7 @@ test('creates a readable unique contract number', () => {
   assert.match(createContractNumber(new Date('2026-08-13T12:00:00Z'), 'abc123'), /^PF-20260813-ABC123$/);
 });
 
-test('does not allow a signed contract to be edited', () => {
+test('does not allow a signed contract to be signed again by a client', () => {
   assert.equal(canEditContract('draft'), true);
   assert.equal(canEditContract('issued'), true);
   assert.equal(canEditContract('signed'), false);
@@ -100,4 +100,13 @@ test('emails the signed contract number and PDF attachment to the client', () =>
   assert.match(server, /filename: `Pet-Fly-Contract-\$\{contractNumber\}\.pdf`/);
   assert.match(server, /attachments/);
   assert.match(server, /email_sent: emailSent/);
+});
+
+test('keeps signed contracts editable in the admin editor and admin API', () => {
+  const adminScript = fs.readFileSync(path.join(__dirname, '..', 'admin', 'app.js'), 'utf8');
+  const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+
+  assert.doesNotMatch(adminScript, /var locked = contract\.status === 'signed'/);
+  assert.doesNotMatch(server, /app\.put\('\/api\/admin\/contracts\/:id'[\s\S]*?Signed contracts are immutable\./);
+  assert.doesNotMatch(server, /app\.post\('\/api\/admin\/contracts\/:id\/issue'[\s\S]*?Signed contracts are immutable\./);
 });
