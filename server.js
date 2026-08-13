@@ -11,6 +11,7 @@ const bcrypt = require('bcryptjs');
 const mysql = require('mysql2/promise');
 const nodemailer = require('nodemailer');
 const { createContractNumber, canEditContract } = require('./lib/contracts');
+const { ensureContractSchema, sendContractDatabaseError } = require('./lib/contract-database');
 const { defaultFooter } = require('./lib/site');
 
 const app = express();
@@ -60,6 +61,14 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
+});
+
+// Existing databases predate the contracts table. Apply the additive migration
+// at startup so contract issuance is available immediately after a restart.
+ensureContractSchema(pool).then(() => {
+  console.log('[Contract database] Schema ready');
+}).catch(err => {
+  console.error('[Contract database] Schema setup failed:', err.message);
 });
 
 async function getConnection() { return pool.getConnection(); }
@@ -268,7 +277,7 @@ app.get('/api/contracts/:contractNumber', async (req, res) => {
     const contract = rows[0];
     contract.contract_data = typeof contract.contract_data === 'string' ? JSON.parse(contract.contract_data) : contract.contract_data;
     res.json({ contract });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { sendContractDatabaseError(res, err); }
 });
 
 app.post('/api/contracts/:contractNumber/sign', async (req, res) => {
@@ -285,7 +294,7 @@ app.post('/api/contracts/:contractNumber/sign', async (req, res) => {
     );
     if (!result.affectedRows) return res.status(409).json({ error: 'This contract has already been signed and cannot be changed.' });
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { sendContractDatabaseError(res, err); }
 });
 
 // ── Quote Submission ───────────────────────────────────────────────────────
@@ -553,7 +562,7 @@ app.get('/api/admin/contracts', requireAdmin, async (req, res) => {
       q.contact_name AS quote_contact_name FROM contracts c LEFT JOIN quote_requests q ON q.id=c.quote_request_id ORDER BY c.created_at DESC`);
     contracts.forEach(contract => { contract.contract_data = typeof contract.contract_data === 'string' ? JSON.parse(contract.contract_data) : contract.contract_data; });
     res.json({ contracts });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { sendContractDatabaseError(res, err); }
 });
 
 app.get('/api/admin/contracts/quotes/:id', requireAdmin, async (req, res) => {
@@ -561,7 +570,7 @@ app.get('/api/admin/contracts/quotes/:id', requireAdmin, async (req, res) => {
     const rows = await query('SELECT * FROM quote_requests WHERE id=?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: 'Quote not found' });
     res.json({ contract_data: contractDataFromQuote(rows[0]), quote_request_id: rows[0].id });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { sendContractDatabaseError(res, err); }
 });
 
 app.post('/api/admin/contracts', requireAdmin, async (req, res) => {
@@ -576,7 +585,7 @@ app.post('/api/admin/contracts', requireAdmin, async (req, res) => {
     }
     const [result] = await pool.execute('INSERT INTO contracts (contract_number, quote_request_id, contract_data) VALUES (?,?,?)', [contractNumber, quoteId, JSON.stringify(data)]);
     res.status(201).json({ success: true, id: result.insertId, contract_number: contractNumber });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { sendContractDatabaseError(res, err); }
 });
 
 app.put('/api/admin/contracts/:id', requireAdmin, async (req, res) => {
@@ -586,7 +595,7 @@ app.put('/api/admin/contracts/:id', requireAdmin, async (req, res) => {
     if (!canEditContract(rows[0].status)) return res.status(409).json({ error: 'Signed contracts are immutable.' });
     await query('UPDATE contracts SET contract_data=?, quote_request_id=? WHERE id=?', [JSON.stringify(req.body.contract_data || {}), req.body.quote_request_id || null, req.params.id]);
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { sendContractDatabaseError(res, err); }
 });
 
 app.post('/api/admin/contracts/:id/issue', requireAdmin, async (req, res) => {
@@ -596,7 +605,7 @@ app.post('/api/admin/contracts/:id/issue', requireAdmin, async (req, res) => {
     if (!canEditContract(rows[0].status)) return res.status(409).json({ error: 'Signed contracts are immutable.' });
     await query(`UPDATE contracts SET contract_data=?, quote_request_id=?, status='issued', issued_at=COALESCE(issued_at, NOW()) WHERE id=?`, [JSON.stringify(req.body.contract_data || {}), req.body.quote_request_id || null, req.params.id]);
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { sendContractDatabaseError(res, err); }
 });
 
 // TEMP DEBUG - no auth needed (for testing only)
