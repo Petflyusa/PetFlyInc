@@ -13,6 +13,7 @@ const nodemailer = require('nodemailer');
 const { blankContractData, createContractNumber, canEditContract, mergeClientContractData, normalizeContractData } = require('./lib/contracts');
 const { ensureContractSchema, sendContractDatabaseError } = require('./lib/contract-database');
 const { generateContractPdf } = require('./lib/contract-pdf');
+const { documentExpiryStatus, isActiveRelocation, relocationSteps } = require('./lib/portal');
 const { defaultFooter } = require('./lib/site');
 
 const app = express();
@@ -160,6 +161,12 @@ function requireAdmin(req, res, next) {
   return res.redirect('/admin/login');
 }
 
+function requirePortalAccount(req, res, next) {
+  if (req.session && req.session.clientAccountId) return next();
+  if (req.path.startsWith('/api/')) return res.status(401).json({ error: 'Please sign in to view your relocation portal.' });
+  return res.redirect('/portal/login');
+}
+
 // ── Landing Content Helpers ─────────────────────────────────────────────────
 async function getLandingContent() {
   const rows = await query('SELECT section_key, content FROM landing_content');
@@ -247,6 +254,85 @@ app.get('/contract', async (req, res) => {
     footer = defaultFooter();
   }
   res.render('contract', { footer });
+});
+
+app.get('/portal/login', (req, res) => {
+  if (req.session && req.session.clientAccountId) return res.redirect(req.session.clientMustChangePassword ? '/portal/change-password' : '/portal');
+  res.render('portal-login', { error: null });
+});
+
+app.post('/portal/login', async (req, res) => {
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const password = String(req.body.password || '');
+  if (!email || !password) return res.status(400).render('portal-login', { error: 'Email and password are required.' });
+  try {
+    const rows = await query('SELECT id, email, password_hash, must_change_password FROM client_accounts WHERE email=?', [email]);
+    const account = rows[0];
+    if (!account || !await bcrypt.compare(password, account.password_hash)) return res.status(401).render('portal-login', { error: 'Invalid email or password.' });
+    req.session.clientAccountId = account.id;
+    req.session.clientAccountEmail = account.email;
+    req.session.clientMustChangePassword = Boolean(account.must_change_password);
+    return res.redirect(account.must_change_password ? '/portal/change-password' : '/portal');
+  } catch (err) {
+    console.error('[Portal login]', err);
+    return res.status(500).render('portal-login', { error: 'Unable to sign in right now.' });
+  }
+});
+
+app.post('/portal/logout', requirePortalAccount, (req, res) => {
+  delete req.session.clientAccountId;
+  delete req.session.clientAccountEmail;
+  delete req.session.clientMustChangePassword;
+  res.redirect('/portal/login');
+});
+
+app.get('/portal/change-password', requirePortalAccount, (req, res) => res.render('portal-password', { error: null }));
+
+app.post('/portal/change-password', requirePortalAccount, async (req, res) => {
+  const password = String(req.body.password || '');
+  const confirmation = String(req.body.confirm_password || '');
+  if (password.length < 8) return res.status(400).render('portal-password', { error: 'Use at least 8 characters for your password.' });
+  if (password !== confirmation) return res.status(400).render('portal-password', { error: 'The passwords do not match.' });
+  try {
+    await query('UPDATE client_accounts SET password_hash=?, must_change_password=FALSE WHERE id=?', [await bcrypt.hash(password, 12), req.session.clientAccountId]);
+    req.session.clientMustChangePassword = false;
+    res.redirect('/portal');
+  } catch (err) {
+    console.error('[Portal password]', err);
+    res.status(500).render('portal-password', { error: 'Unable to change your password right now.' });
+  }
+});
+
+app.get('/api/portal/relocations', requirePortalAccount, async (req, res) => {
+  try {
+    const contracts = await query(`SELECT c.id, c.contract_number, c.contract_data FROM client_contracts cc JOIN contracts c ON c.id=cc.contract_id
+      WHERE cc.client_account_id=? AND c.status <> 'draft' ORDER BY c.created_at DESC`, [req.session.clientAccountId]);
+    const relocations = await Promise.all(contracts.map(async contract => {
+      const data = typeof contract.contract_data === 'string' ? JSON.parse(contract.contract_data) : contract.contract_data;
+      const updates = await query('SELECT status_step, occurred_at FROM relocation_updates WHERE contract_id=? ORDER BY occurred_at DESC, id DESC LIMIT 1', [contract.id]);
+      const currentStatus = updates[0] ? updates[0].status_step : (contract.status === 'signed' ? 'Contract Signed' : 'Consulting');
+      return { id: contract.id, contract_number: contract.contract_number, pet_name: data.animal && data.animal.name || 'Pet', route: [data.travel && data.travel.departure_city, data.travel && data.travel.arrival_city].filter(Boolean).join(' to '), current_status: currentStatus, active: isActiveRelocation(currentStatus) };
+    }));
+    res.json({ relocations });
+  } catch (err) { sendContractDatabaseError(res, err); }
+});
+
+app.get('/api/portal/relocations/:contractId', requirePortalAccount, async (req, res) => {
+  try {
+    const contracts = await query(`SELECT c.id, c.contract_number, c.contract_data, c.status FROM client_contracts cc JOIN contracts c ON c.id=cc.contract_id
+      WHERE cc.client_account_id=? AND c.id=?`, [req.session.clientAccountId, req.params.contractId]);
+    if (!contracts.length) return res.status(404).json({ error: 'Relocation not found.' });
+    const contract = contracts[0];
+    const data = typeof contract.contract_data === 'string' ? JSON.parse(contract.contract_data) : contract.contract_data;
+    const [updates, events, documents, boarding] = await Promise.all([
+      query('SELECT id, status_step, client_note, occurred_at FROM relocation_updates WHERE contract_id=? ORDER BY occurred_at DESC, id DESC', [contract.id]),
+      query('SELECT id, event_type, title, description, location, starts_at FROM relocation_events WHERE contract_id=? ORDER BY starts_at ASC', [contract.id]),
+      query('SELECT id, category, label, file_url, issued_on, expires_on FROM relocation_documents WHERE contract_id=? ORDER BY expires_on ASC, id DESC', [contract.id]),
+      query('SELECT id, title, youtube_id, client_note, published_at FROM boarding_updates WHERE contract_id=? ORDER BY published_at DESC', [contract.id])
+    ]);
+    const currentStatus = updates[0] ? updates[0].status_step : (contract.status === 'signed' ? 'Contract Signed' : 'Consulting');
+    res.json({ relocation: { id: contract.id, contract_number: contract.contract_number, contract_data: data, current_status: currentStatus, relocation_steps: relocationSteps, updates, events, documents: documents.map(document => ({ ...document, expiry_status: documentExpiryStatus(document.expires_on) })), boarding } });
+  } catch (err) { sendContractDatabaseError(res, err); }
 });
 
 // ── PUBLIC API ────────────────────────────────────────────────────────────
