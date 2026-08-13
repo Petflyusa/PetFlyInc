@@ -47,7 +47,7 @@ test('keeps admin quotation and payment values when client data is merged', () =
 
   assert.equal(merged.client.first_name, 'Avery');
   assert.equal(merged.quotation.cargo_charge, '100');
-  assert.equal(merged.payment.payment_method, 'Zelle');
+  assert.equal(merged.payment.payment_method, 'Wire');
 });
 
 test('client contract editor has typed controls and locks quotation fields', () => {
@@ -58,4 +58,46 @@ test('client contract editor has typed controls and locks quotation fields', () 
   assert.match(clientTemplate, /weight_kg/);
   assert.match(clientTemplate, /clientInput\(data,'agreement','effective_date'.*'date'/);
   assert.doesNotMatch(clientTemplate, /kennel_size/);
+});
+
+test('uses normal editable travel text fields without a location catalog dependency', () => {
+  const adminApp = fs.readFileSync(path.join(__dirname, '..', 'admin', 'app.js'), 'utf8');
+  const clientTemplate = fs.readFileSync(path.join(__dirname, '..', 'views', 'contract.ejs'), 'utf8');
+
+  for (const source of [adminApp, clientTemplate]) {
+    assert.match(source, /departure_country/);
+    assert.match(source, /departure_state/);
+    assert.match(source, /departure_city/);
+    assert.match(source, /arrival_country/);
+    assert.match(source, /arrival_state/);
+    assert.match(source, /arrival_city/);
+    assert.doesNotMatch(source, /\/api\/contract-locations/);
+  }
+});
+
+test('locks payment and carrier details for client contracts and uses current carrier defaults', () => {
+  const clientTemplate = fs.readFileSync(path.join(__dirname, '..', 'views', 'contract.ejs'), 'utf8');
+  const defaults = blankContractData('2026-08-13');
+
+  assert.match(clientTemplate, /clientReadOnly = \{ quotation:true, payment:true, carrier:true \}/);
+  assert.equal(defaults.carrier.website, 'www.petflyinc.com');
+  assert.equal(defaults.carrier.office_phone, '626-656-5666');
+  assert.equal(defaults.carrier.representative_signature, undefined);
+});
+
+test('uses the same three-column width for every travel detail row', () => {
+  const clientTemplate = fs.readFileSync(path.join(__dirname, '..', 'views', 'contract.ejs'), 'utf8');
+
+  assert.match(clientTemplate, /\.contract-schedule \{ grid-template-columns:repeat\(3,minmax\(0,1fr\)\); \}/);
+  assert.doesNotMatch(clientTemplate, /\.contract-schedule \{[^}]*max-width/);
+});
+
+test('emails the signed contract number and PDF attachment to the client', () => {
+  const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+
+  assert.match(server, /generateContractPdf/);
+  assert.match(server, /sendEmail\(clientEmail, `Your signed Pet Fly contract \$\{contractNumber\}`/);
+  assert.match(server, /filename: `Pet-Fly-Contract-\$\{contractNumber\}\.pdf`/);
+  assert.match(server, /attachments/);
+  assert.match(server, /email_sent: emailSent/);
 });

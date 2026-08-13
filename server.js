@@ -12,6 +12,7 @@ const mysql = require('mysql2/promise');
 const nodemailer = require('nodemailer');
 const { blankContractData, createContractNumber, canEditContract, mergeClientContractData, normalizeContractData } = require('./lib/contracts');
 const { ensureContractSchema, sendContractDatabaseError } = require('./lib/contract-database');
+const { generateContractPdf } = require('./lib/contract-pdf');
 const { defaultFooter } = require('./lib/site');
 
 const app = express();
@@ -29,10 +30,10 @@ const smtpConfig = {
 };
 const mailTransporter = nodemailer.createTransport(smtpConfig);
 
-async function sendEmail(to, subject, htmlContent) {
+async function sendEmail(to, subject, htmlContent, attachments = []) {
   if (!smtpConfig.auth.pass) {
     console.warn('[Email] SMTP_PASS not set, skipping email send to', to);
-    return;
+    return false;
   }
   try {
     await mailTransporter.sendMail({
@@ -40,10 +41,13 @@ async function sendEmail(to, subject, htmlContent) {
       to,
       subject,
       html: htmlContent,
+      attachments,
     });
     console.log('[Email] Sent to', to);
+    return true;
   } catch (err) {
     console.error('[Email] Failed to send:', err.message);
+    return false;
   }
 }
 
@@ -288,12 +292,28 @@ app.post('/api/contracts/:contractNumber/sign', async (req, res) => {
     const rows = await query('SELECT id, status, contract_data FROM contracts WHERE contract_number = ?', [contractNumber]);
     if (!rows.length || rows[0].status === 'draft') return res.status(404).json({ error: 'Contract not found or not issued.' });
     if (!canEditContract(rows[0].status)) return res.status(409).json({ error: 'This contract has already been signed and cannot be changed.' });
+    const signedContractData = mergeClientContractData(typeof rows[0].contract_data === 'string' ? JSON.parse(rows[0].contract_data) : rows[0].contract_data, contract_data || {});
     const result = await query(
       `UPDATE contracts SET contract_data=?, client_signature=?, client_signed_name=?, status='signed', signed_at=NOW() WHERE id=? AND status='issued'`,
-      [JSON.stringify(mergeClientContractData(typeof rows[0].contract_data === 'string' ? JSON.parse(rows[0].contract_data) : rows[0].contract_data, contract_data || {})), signature, signed_name.trim(), rows[0].id]
+      [JSON.stringify(signedContractData), signature, signed_name.trim(), rows[0].id]
     );
     if (!result.affectedRows) return res.status(409).json({ error: 'This contract has already been signed and cannot be changed.' });
-    res.json({ success: true });
+    const clientEmail = String(signedContractData.client && signedContractData.client.email || '').trim();
+    let emailSent = false;
+    if (clientEmail) {
+      const pdf = generateContractPdf({ contractNumber, contractData: signedContractData, signedName: signed_name.trim(), signedAt: new Date() });
+      const contractEmail = `<p>Thank you for signing your Pet Fly Inc contract.</p><p><strong>Contract number:</strong> ${contractNumber}</p><p>Your signed contract is attached as a PDF for your records.</p>`;
+      try {
+        emailSent = await sendEmail(clientEmail, `Your signed Pet Fly contract ${contractNumber}`, contractEmail, [{
+          filename: `Pet-Fly-Contract-${contractNumber}.pdf`,
+          content: pdf,
+          contentType: 'application/pdf'
+        }]);
+      } catch (emailError) {
+        console.error('[Contract email]', emailError);
+      }
+    }
+    res.json({ success: true, email_sent: emailSent });
   } catch (err) { sendContractDatabaseError(res, err); }
 });
 
@@ -537,7 +557,7 @@ function contractDataFromQuote(quote) {
   const data = blankContractData();
   if (!quote) return data;
   data.client = { first_name: quote.contact_name || '', last_name: '', address: quote.pickup_address || '', city_state_zip: '', phone: quote.phone || '', email: quote.email || '' };
-  data.animal = { ...data.animal, name: quote.pet_name || '', type: quote.pet_type || '', breed: quote.breed || '', gender: quote.pet_gender || '', dob: quote.pet_dob || '', weight: quote.pet_weight || '', color: quote.pet_color || '', microchip: quote.microchip || '' };
+  data.animal = { ...data.animal, name: quote.pet_name || '', type: quote.pet_type || '', breed: quote.breed || '', gender: quote.pet_gender || '', dob: quote.pet_dob || '', weight_kg: quote.pet_weight || '', color: quote.pet_color || '', microchip: quote.microchip || '' };
   data.travel = { ...data.travel, departure_country: quote.origin_country || '', departure_city: quote.origin_city || '', arrival_country: quote.dest_country || '', arrival_city: quote.dest_city || '', travel_date: quote.travel_date || '' };
   data.shipment.pickup_name_address_phone = [quote.contact_name, quote.pickup_address, quote.phone].filter(Boolean).join('\n');
   return data;
