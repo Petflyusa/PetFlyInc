@@ -135,6 +135,11 @@ test('persists uploaded pet photos for an existing contract', () => {
   assert.match(adminScript, /form\.append\('contract_id'/);
 });
 
+test('keeps embedded contract pet photos when normalizing saved contract data', () => {
+  const data = normalizeContractData({ animal: { photos: ['data:image/jpeg;base64,abc', '/uploads/photo.jpg'] } });
+  assert.deepEqual(data.animal.photos, ['data:image/jpeg;base64,abc', '/uploads/photo.jpg']);
+});
+
 test('serves uploaded contract photos from the configured persistent upload directory', () => {
   const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
 

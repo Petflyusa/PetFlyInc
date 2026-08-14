@@ -697,7 +697,10 @@ app.get('/api/admin/contracts', requireAdmin, async (req, res) => {
 });
 
 app.post('/api/admin/contract-photos', requireAdmin, contractPhotoUpload.array('photos', 5), async (req, res) => {
-  const photos = (req.files || []).map(file => `/uploads/${file.filename}`);
+  const photos = (req.files || []).map(file => {
+    const mime = file.mimetype === 'image/png' ? 'png' : file.mimetype === 'image/webp' ? 'webp' : 'jpeg';
+    return `data:image/${mime};base64,${fs.readFileSync(file.path).toString('base64')}`;
+  });
   if (!photos.length) return res.status(400).json({ error: 'Upload up to five JPG, PNG, or WebP pet photos.' });
   const contractId = Number.parseInt(req.body.contract_id, 10);
   try {
