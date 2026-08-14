@@ -113,6 +113,15 @@ test('lets a client download a PDF after opening an issued contract', () => {
   assert.doesNotMatch(clientTemplate, /id="downloadContractPdf"/);
 });
 
+test('generates a styled branded contract PDF with section treatment and page numbering', () => {
+  const { generateContractPdf } = require('../lib/contract-pdf');
+  const pdf = generateContractPdf({ contractNumber: 'PF-20260814-ABC123', contractData: {}, signedName: '', signedAt: new Date() }).toString('utf8');
+
+  assert.match(pdf, /0\.09 0\.17 0\.24 rg/);
+  assert.match(pdf, /Pet Fly International Animal Travel Inc/);
+  assert.match(pdf, /Page 1 of/);
+});
+
 test('keeps signed contracts editable in the admin editor and admin API', () => {
   const adminScript = fs.readFileSync(path.join(__dirname, '..', 'admin', 'app.js'), 'utf8');
   const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
