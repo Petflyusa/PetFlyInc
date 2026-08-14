@@ -59,6 +59,40 @@ function showSection(name) {
   if (name === 'airlines') loadAirlines();
 }
 
+// Mobile navigation is independent from section loading so desktop behavior stays unchanged.
+function closeAdminNav() {
+  var sidebar = document.getElementById('adminSidebar');
+  var overlay = document.getElementById('adminNavOverlay');
+  var toggle = document.getElementById('adminMenuToggle');
+  if (!sidebar || !overlay || !toggle) return;
+  sidebar.classList.remove('is-open');
+  overlay.classList.remove('is-visible');
+  document.body.classList.remove('admin-nav-open');
+  overlay.setAttribute('aria-hidden', 'true');
+  toggle.setAttribute('aria-expanded', 'false');
+}
+
+function toggleAdminNav() {
+  var sidebar = document.getElementById('adminSidebar');
+  var overlay = document.getElementById('adminNavOverlay');
+  var toggle = document.getElementById('adminMenuToggle');
+  if (!sidebar || !overlay || !toggle) return;
+  var isOpen = sidebar.classList.toggle('is-open');
+  overlay.classList.toggle('is-visible', isOpen);
+  document.body.classList.toggle('admin-nav-open', isOpen);
+  overlay.setAttribute('aria-hidden', String(!isOpen));
+  toggle.setAttribute('aria-expanded', String(isOpen));
+}
+
+document.getElementById('adminMenuToggle').addEventListener('click', toggleAdminNav);
+document.getElementById('adminNavOverlay').addEventListener('click', closeAdminNav);
+document.querySelectorAll('.nav-btn').forEach(function(button) {
+  button.addEventListener('click', closeAdminNav);
+});
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') closeAdminNav();
+});
+
 // ── Dashboard ─────────────────────────────────────────────────────────────
 async function loadDashboard() {
   try {

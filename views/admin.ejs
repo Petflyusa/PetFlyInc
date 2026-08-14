@@ -13,8 +13,15 @@
 
 <div id="adminApp">
 
+  <header class="admin-mobile-header">
+    <button id="adminMenuToggle" class="admin-menu-toggle" type="button" aria-label="Open navigation" aria-controls="adminSidebar" aria-expanded="false">
+      <i class="fas fa-bars" aria-hidden="true"></i>
+    </button>
+    <div class="admin-mobile-brand"><i class="fas fa-paw" aria-hidden="true"></i> Pet Fly Admin</div>
+  </header>
+
   <!-- Sidebar -->
-  <aside class="sidebar">
+  <aside id="adminSidebar" class="sidebar">
     <div class="sidebar-logo">
       <i class="fas fa-paw"></i> Pet Fly Admin
     </div>
@@ -50,6 +57,7 @@
       </button>
     </div>
   </aside>
+  <div id="adminNavOverlay" class="admin-nav-overlay" aria-hidden="true"></div>
 
   <!-- Main Content -->
   <main class="main-content">

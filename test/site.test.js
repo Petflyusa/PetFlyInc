@@ -24,3 +24,19 @@ test('legacy admin actions are permitted by the Content Security Policy', () => 
   assert.match(server, /scriptSrc:\s*\["'self'",\s*"'unsafe-inline'"/);
   assert.match(server, /scriptSrcAttr:\s*\["'unsafe-inline'"\]/);
 });
+
+test('admin includes a mobile navigation drawer and responsive layout rules', () => {
+  const template = fs.readFileSync(path.join(__dirname, '..', 'views', 'admin.ejs'), 'utf8');
+  const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'css', 'admin.css'), 'utf8');
+  const app = fs.readFileSync(path.join(__dirname, '..', 'admin', 'app.js'), 'utf8');
+
+  assert.match(template, /id="adminMenuToggle"/);
+  assert.match(template, /id="adminSidebar"/);
+  assert.match(template, /id="adminNavOverlay"/);
+  assert.match(css, /@media \(max-width: 760px\)/);
+  assert.match(css, /\.sidebar\.is-open/);
+  assert.match(css, /transform: translateX\(-100%\)/);
+  assert.match(css, /\.main-content \{ margin-left: 0; padding-top: var\(--header-h\); min-width: 0;/);
+  assert.match(app, /function closeAdminNav\(\)/);
+  assert.match(app, /event\.key === 'Escape'/);
+});
