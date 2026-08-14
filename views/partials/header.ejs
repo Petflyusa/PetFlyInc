@@ -104,7 +104,7 @@
     PetFlyI18n.apply(document);
     PetFlyI18n.observe(document.body);
     PetFlyI18n.translatePage(document.body, selector.value);
-    selector.addEventListener('change', function() { PetFlyI18n.setLanguage(selector.value); PetFlyI18n.translatePage(document.body, selector.value); });
+    selector.addEventListener('change', function() { PetFlyI18n.setLanguage(selector.value); window.location.reload(); });
   });
   window.addEventListener('scroll', function() {
     var h = document.getElementById('siteHeader');

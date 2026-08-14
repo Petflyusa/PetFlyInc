@@ -79,6 +79,7 @@ test('loads the localization module and provides a persistent language selector 
   assert.match(header, /id="languageSelect"/);
   assert.match(header, /data-i18n="nav\.services"/);
   assert.match(header, /data-i18n="nav\.clientLogin"/);
+  assert.match(header, /window\.location\.reload\(\)/);
 });
 
 test('translates known client interface phrases without changing unknown saved content', () => {
