@@ -474,7 +474,7 @@ app.post('/api/quote', async (req, res) => {
         (contact_name, email, phone, pet_type, pet_name, breed, pet_color, pet_gender, pet_dob, microchip, pet_weight,
          origin_country, origin_city, dest_country, dest_city, travel_date, transport_type,
          pickup_delivery, pickup_address, delivery_address, notes)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [contact_name, email, phone||null, pet_type||'Dog', pet_name||null, breed||null, pet_color||null, pet_gender||null, pet_dob||null, microchip||null, pet_weight||null,
        origin_country||null, origin_city||null, dest_country||null, dest_city||null,
        travel_date||null, transport_type||null,
