@@ -110,6 +110,7 @@ test('lets a client download a PDF after opening an issued contract', () => {
   assert.match(server, /attachment\(`Pet-Fly-Contract-\$\{contractNumber\}\.pdf`\)/);
   assert.match(clientTemplate, /downloadContractPdf/);
   assert.match(clientTemplate, /Download PDF/);
+  assert.doesNotMatch(clientTemplate, /id="downloadContractPdf"/);
 });
 
 test('keeps signed contracts editable in the admin editor and admin API', () => {
