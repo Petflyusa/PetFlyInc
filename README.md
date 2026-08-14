@@ -71,6 +71,10 @@ Issued and signed contracts also have a **Manage Portal** action. Use it to crea
 
 Set `SITE_URL=https://petflyinc.com` in production so access emails point to the public site. Configure `UPLOAD_DIR` to a writable directory outside the Git-synced Hostinger deployment folder (for example, `/home/u884869254/uploads`, after confirming the path in hPanel). The portal stores document and pet-photo files there and serves them at `/uploads/...`; keeping those files outside the deployment directory prevents Git deployments from deleting them. Boarding videos use YouTube embeds and do not consume Hostinger video storage.
 
+## Visitor Languages
+
+Client-facing pages support English, Spanish, and Simplified Chinese. The first visit follows the browser language (`es-*` and `zh-*` are recognized); the header language menu saves a browser-only override under `petfly_language`. The internal admin area and saved client or administrator records retain their original language.
+
 ## Deployment (Vercel)
 
 ```bash

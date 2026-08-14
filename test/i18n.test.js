@@ -81,6 +81,12 @@ test('loads the localization module and provides a persistent language selector 
   assert.match(header, /data-i18n="nav\.clientLogin"/);
 });
 
+test('translates known client interface phrases without changing unknown saved content', () => {
+  assert.equal(i18n.translateLiteral('es', 'Relocation Progress'), 'Progreso de la reubicacion');
+  assert.equal(i18n.translateLiteral('zh', 'Sign in'), '登录');
+  assert.equal(i18n.translateLiteral('es', 'Mochi'), 'Mochi');
+});
+
 function createElement(key) {
   const attributes = {
     'data-i18n': key,

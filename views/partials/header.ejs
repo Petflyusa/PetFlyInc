@@ -102,6 +102,7 @@
     if (!selector || !window.PetFlyI18n) return;
     selector.value = PetFlyI18n.getLanguage();
     PetFlyI18n.apply(document);
+    PetFlyI18n.observe(document.body);
     selector.addEventListener('change', function() { PetFlyI18n.setLanguage(selector.value); });
   });
   window.addEventListener('scroll', function() {
