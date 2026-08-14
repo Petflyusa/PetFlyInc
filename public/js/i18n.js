@@ -65,11 +65,7 @@
     var browserLanguage = (browserLanguages || []).map(normalizeLanguage).find(Boolean);
     var savedLanguage = normalizeStoredLanguage(stored);
 
-    if (stored != null) {
-      return savedLanguage || normalizeLanguage(fallback) || 'en';
-    }
-
-    return browserLanguage || normalizeLanguage(fallback) || 'en';
+    return savedLanguage || browserLanguage || normalizeLanguage(fallback) || 'en';
   }
 
   function translate(language, key, replacements) {
