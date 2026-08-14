@@ -126,6 +126,26 @@ button { cursor: pointer; font-family: inherit; }
   background: var(--charcoal) !important;
   color: var(--cream) !important;
 }
+.language-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: var(--space-md);
+  color: rgba(255,255,255,0.88);
+  font-size: 0.8125rem;
+}
+.language-control select {
+  appearance: none;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0.3rem 1.4rem 0.3rem 0.45rem;
+  cursor: pointer;
+}
+.language-control option { color: var(--charcoal); background: #fff; }
+#siteHeader.scrolled .language-control { color: var(--charcoal); }
 .menu-toggle { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 4px; }
 .menu-toggle span { display: block; width: 22px; height: 1.5px; background: #fff; transition: all 0.2s; }
 #siteHeader.scrolled .menu-toggle span { background: var(--charcoal); }
@@ -792,6 +812,7 @@ footer {
 }
 @media (max-width: 640px) {
   #siteHeader nav { display: none; }
+  .language-control { margin-left: auto; margin-right: var(--space-sm); }
   .menu-toggle { display: flex; }
   .footer-grid { grid-template-columns: 1fr; }
   .footer-bottom { flex-direction: column; text-align: center; }

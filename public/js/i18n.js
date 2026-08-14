@@ -21,6 +21,7 @@
       'nav.regulations': 'Regulations',
       'nav.contact': 'Contact',
       'nav.clientLogin': 'Client Login',
+      'language.label': 'Language',
       'language.english': 'English',
       'language.spanish': 'Spanish',
       'language.chinese': 'Chinese'
@@ -33,6 +34,7 @@
       'nav.regulations': 'Regulaciones',
       'nav.contact': 'Contacto',
       'nav.clientLogin': 'Acceso de cliente',
+      'language.label': 'Idioma',
       'language.english': 'Ingles',
       'language.spanish': 'Espanol',
       'language.chinese': 'Chino'
@@ -45,6 +47,7 @@
       'nav.regulations': '法规',
       'nav.contact': '联系我们',
       'nav.clientLogin': '客户登录',
+      'language.label': '语言',
       'language.english': '英语',
       'language.spanish': '西班牙语',
       'language.chinese': '中文'

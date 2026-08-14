@@ -70,6 +70,17 @@ test('exposes the browser API and applies the chosen language when storage fails
   }
 });
 
+test('loads the localization module and provides a persistent language selector in the public header', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const header = fs.readFileSync(path.join(__dirname, '..', 'views', 'partials', 'header.ejs'), 'utf8');
+
+  assert.match(header, /<script src="\/js\/i18n\.js" defer><\/script>/);
+  assert.match(header, /id="languageSelect"/);
+  assert.match(header, /data-i18n="nav\.services"/);
+  assert.match(header, /data-i18n="nav\.clientLogin"/);
+});
+
 function createElement(key) {
   const attributes = {
     'data-i18n': key,
