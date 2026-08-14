@@ -96,12 +96,12 @@
     return resolveLanguage(stored, browserLanguages, 'en');
   }
 
-  function apply(root) {
+  function apply(root, language) {
     if (!root || !root.querySelectorAll) {
       return;
     }
 
-    var language = getLanguage();
+    var selectedLanguage = normalizeLanguage(language) || getLanguage();
     var attributeTargets = [
       ['[data-i18n]', 'data-i18n', 'textContent'],
       ['[data-i18n-placeholder]', 'data-i18n-placeholder', 'placeholder'],
@@ -111,7 +111,7 @@
     attributeTargets.forEach(function (target) {
       root.querySelectorAll(target[0]).forEach(function (element) {
         var key = element.getAttribute(target[1]);
-        var value = translate(language, key);
+        var value = translate(selectedLanguage, key);
 
         if (target[2] === 'aria-label') {
           element.setAttribute(target[2], value);
@@ -136,7 +136,7 @@
 
       if (global.document) {
         global.document.documentElement.lang = chosen === 'zh' ? 'zh-CN' : chosen;
-        apply(global.document);
+        apply(global.document, chosen);
       }
     }
 
