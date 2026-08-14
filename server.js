@@ -408,6 +408,18 @@ app.get('/api/contracts/:contractNumber', async (req, res) => {
   } catch (err) { sendContractDatabaseError(res, err); }
 });
 
+app.get('/api/contracts/:contractNumber/pdf', async (req, res) => {
+  const contractNumber = req.params.contractNumber.trim().toUpperCase();
+  try {
+    const rows = await query('SELECT contract_number, status, contract_data, client_signed_name, signed_at FROM contracts WHERE contract_number = ?', [contractNumber]);
+    if (!rows.length || rows[0].status === 'draft') return res.status(404).json({ error: 'Contract not found or not issued.' });
+    const contract = rows[0];
+    const contractData = typeof contract.contract_data === 'string' ? JSON.parse(contract.contract_data) : contract.contract_data;
+    const pdf = generateContractPdf({ contractNumber, contractData, signedName: contract.client_signed_name || '', signedAt: contract.signed_at || new Date() });
+    res.type('application/pdf').attachment(`Pet-Fly-Contract-${contractNumber}.pdf`).send(pdf);
+  } catch (err) { sendContractDatabaseError(res, err); }
+});
+
 app.post('/api/contracts/:contractNumber/sign', async (req, res) => {
   const contractNumber = req.params.contractNumber.trim().toUpperCase();
   const { contract_data, signature, signed_name, accepted_terms } = req.body;

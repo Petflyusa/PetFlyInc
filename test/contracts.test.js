@@ -102,6 +102,16 @@ test('emails the signed contract number and PDF attachment to the client', () =>
   assert.match(server, /email_sent: emailSent/);
 });
 
+test('lets a client download a PDF after opening an issued contract', () => {
+  const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  const clientTemplate = fs.readFileSync(path.join(__dirname, '..', 'views', 'contract.ejs'), 'utf8');
+
+  assert.match(server, /app\.get\('\/api\/contracts\/:contractNumber\/pdf'/);
+  assert.match(server, /attachment\(`Pet-Fly-Contract-\$\{contractNumber\}\.pdf`\)/);
+  assert.match(clientTemplate, /downloadContractPdf/);
+  assert.match(clientTemplate, /Download PDF/);
+});
+
 test('keeps signed contracts editable in the admin editor and admin API', () => {
   const adminScript = fs.readFileSync(path.join(__dirname, '..', 'admin', 'app.js'), 'utf8');
   const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');

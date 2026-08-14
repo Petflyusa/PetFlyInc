@@ -47,6 +47,7 @@
       <span class="section-label">Pet Fly International Animal Travel Inc</span>
       <h1>International Animal Transportation Contract</h1>
       <div class="contract-number">Contract No. <strong id="displayContractNumber"></strong></div>
+      <button id="downloadContractPdf" class="btn-outline" type="button" style="margin-top:1rem;" onclick="downloadContractPdf()">Download PDF</button>
     </div>
     <div id="signedNotice" class="signed-notice" style="display:none;"></div>
     <div id="signedSignature" style="display:none;"></div>
@@ -115,6 +116,7 @@ async function findContract() { var number=document.getElementById('contractNumb
 function setupSignature(){ signatureCanvas=document.getElementById('signaturePad'); var rect=signatureCanvas.getBoundingClientRect(); signatureCanvas.width=rect.width*devicePixelRatio;signatureCanvas.height=rect.height*devicePixelRatio; signatureContext=signatureCanvas.getContext('2d');signatureContext.scale(devicePixelRatio,devicePixelRatio);signatureContext.strokeStyle='#1f2e3a';signatureContext.lineWidth=2;signatureContext.lineCap='round';var drawing=false;function point(e){var b=signatureCanvas.getBoundingClientRect(),p=e.touches?e.touches[0]:e;return {x:p.clientX-b.left,y:p.clientY-b.top};}function start(e){drawing=true;var p=point(e);signatureContext.beginPath();signatureContext.moveTo(p.x,p.y);e.preventDefault();}function move(e){if(!drawing)return;var p=point(e);signatureContext.lineTo(p.x,p.y);signatureContext.stroke();signatureDrawn=true;e.preventDefault();}function end(){drawing=false;} signatureCanvas.onpointerdown=start;signatureCanvas.onpointermove=move;signatureCanvas.onpointerup=end;signatureCanvas.onpointerleave=end; }
 function clearSignature(){if(signatureContext){signatureContext.clearRect(0,0,signatureCanvas.width,signatureCanvas.height);signatureDrawn=false;}}
 function collectContract(){syncClientFields();return JSON.parse(JSON.stringify(currentContract.contract_data||{}));}
+function downloadContractPdf(){if(currentContract&&currentContract.contract_number)window.location.href='/api/contracts/'+encodeURIComponent(currentContract.contract_number)+'/pdf';}
 async function signContract(e){e.preventDefault();if(!signatureDrawn){document.getElementById('signatureError').textContent='A drawn signature is required.';return;}var r=await fetch('/api/contracts/'+encodeURIComponent(currentContract.contract_number)+'/sign',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contract_data:collectContract(),signature:signatureCanvas.toDataURL('image/png'),signed_name:document.getElementById('signedName').value,accepted_terms:document.getElementById('acceptTerms').checked})});var d=await r.json();if(!r.ok){document.getElementById('signatureError').textContent=d.error||'Could not submit contract.';return;}window.location.reload();}
 </script>
 <%- include('partials/footer', { footer: footer }) %>
