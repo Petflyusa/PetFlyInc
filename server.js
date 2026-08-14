@@ -97,6 +97,7 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com'],
+      connectSrc: ["'self'", 'https://clients5.google.com'],
       scriptSrcAttr: ["'unsafe-inline'"]
     }
   }

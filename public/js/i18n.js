@@ -26,6 +26,7 @@
       'language.english': 'English',
       'language.spanish': 'Spanish',
       'language.chinese': 'Chinese'
+      ,'contract.translationDisclaimer':'Translation notice: This translated contract is provided for convenience only. Pet Fly Inc is a U.S.-based company, and the English version is the controlling and legally binding version of this agreement.'
     },
     es: {
       'nav.home': 'Inicio',
@@ -39,6 +40,7 @@
       'language.english': 'Ingles',
       'language.spanish': 'Espanol',
       'language.chinese': 'Chino'
+      ,'contract.translationDisclaimer':'Aviso de traduccion: Este contrato traducido se proporciona solo para su conveniencia. Pet Fly Inc es una empresa con sede en Estados Unidos, y la version en ingles es la version que prevalece y es legalmente vinculante de este acuerdo.'
     },
     zh: {
       'nav.home': '首页',
@@ -52,6 +54,7 @@
       'language.english': '英语',
       'language.spanish': '西班牙语',
       'language.chinese': '中文'
+      ,'contract.translationDisclaimer':'翻译说明：本译文仅供参考。Pet Fly Inc 是一家总部位于美国的公司，本协议的英文版本为具有控制效力和法律约束力的版本。'
     }
   };
   var literalTranslations = {
@@ -72,6 +75,9 @@
       'Open Contract':'Abrir contrato', 'Sign and Submit Contract':'Firmar y enviar contrato', 'View':'Ver',
       'Not provided':'No proporcionado', 'Not set':'No establecido', 'Not uploaded':'No cargado',
       'Loading relocation details...':'Cargando detalles de la reubicacion...'
+      ,'Terms and Conditions':'Terminos y condiciones', 'Client Signature':'Firma del cliente', 'Full legal name':'Nombre legal completo',
+      'Draw your signature':'Dibuje su firma', 'Clear signature':'Borrar firma',
+      'I have reviewed this contract, confirm the information I provided is accurate, and agree to all terms and conditions.':'He revisado este contrato, confirmo que la informacion proporcionada es correcta y acepto todos los terminos y condiciones.'
       ,'Pet Information':'Información de la mascota', 'Route':'Ruta', 'Your Details':'Sus datos',
       'Pet Type *':'Tipo de mascota *', 'Pet Name':'Nombre de la mascota', 'Date of Birth':'Fecha de nacimiento',
       'Microchip Number':'Número de microchip', 'Origin Country *':'País de origen *', 'Origin City *':'Ciudad de origen *',
@@ -99,6 +105,9 @@
       'Remaining Balance':'剩余余额', 'Open Contract':'打开合同', 'Sign and Submit Contract':'签署并提交合同',
       'View':'查看', 'Not provided':'未提供', 'Not set':'未设置', 'Not uploaded':'未上传',
       'Loading relocation details...':'正在加载搬迁详情...'
+      ,'Terms and Conditions':'条款和条件', 'Client Signature':'客户签名', 'Full legal name':'法定全名',
+      'Draw your signature':'绘制您的签名', 'Clear signature':'清除签名',
+      'I have reviewed this contract, confirm the information I provided is accurate, and agree to all terms and conditions.':'我已审阅本合同，确认所提供的信息准确无误，并同意所有条款和条件。'
       ,'Pet Information':'宠物信息', 'Route':'路线', 'Your Details':'您的信息', 'Pet Type *':'宠物类型 *',
       'Pet Name':'宠物姓名', 'Date of Birth':'出生日期', 'Microchip Number':'芯片号码', 'Origin Country *':'出发国家 *',
       'Origin City *':'出发城市 *', 'Destination Country *':'目的地国家 *', 'Destination City *':'目的地城市 *',
@@ -219,6 +228,26 @@
     observer.observe(root, { childList:true, subtree:true });
   }
 
+  async function translatePage(root, language) {
+    var selected = normalizeLanguage(language) || getLanguage();
+    if (selected === 'en' || !root || !global || !global.document || !global.document.createTreeWalker || !global.fetch) return;
+    var walker = global.document.createTreeWalker(root, 4), nodes = [];
+    while (walker.nextNode()) {
+      var node = walker.currentNode, parent = node.parentElement, value = node.nodeValue.trim();
+      if (!value || !parent || /^(SCRIPT|STYLE|TEXTAREA|OPTION)$/i.test(parent.tagName) || /@|PF-\d|\d{3,}/.test(value)) continue;
+      nodes.push(node);
+    }
+    await Promise.all(nodes.map(async function (node) {
+      var source = originalText && originalText.get(node) || node.nodeValue.trim();
+      if (!source || source.length > 450) return;
+      try {
+        var url = 'https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=en&tl=' + selected + '&dt=t&q=' + encodeURIComponent(source);
+        var response = await global.fetch(url), payload = await response.json();
+        if (payload && payload[0]) { if (originalText) originalText.set(node, source); node.nodeValue = node.nodeValue.replace(source, payload[0]); }
+      } catch (_) { /* Local catalog text remains available when translation is unreachable. */ }
+    }));
+  }
+
   function setLanguage(language) {
     var chosen = normalizeLanguage(language) || 'en';
 
@@ -248,6 +277,7 @@
     getLanguage: getLanguage,
     setLanguage: setLanguage,
     apply: apply,
-    observe: observe
+    observe: observe,
+    translatePage: translatePage
   };
 }));

@@ -28,6 +28,8 @@
   .signed-notice { background:#e5f0e7; border-left:4px solid #367149; padding:1rem; margin:1rem 0 2rem; }
   .signed-signature { max-width:360px; max-height:155px; display:block; margin:1rem 0; border-bottom:1px solid #998b7b; }
   .error-message { color:#a02d2d; min-height:1.5rem; }
+  .translation-disclaimer { display:none; margin:1rem 0; padding:.85rem 1rem; border-left:4px solid #6b5431; background:#f5eee4; color:#4b3b28; font-size:.9rem; line-height:1.55; }
+  html[lang="es"] .translation-disclaimer, html[lang="zh-CN"] .translation-disclaimer { display:block; }
   @media (max-width:650px) { .contract-grid, .contract-route, .contract-schedule { grid-template-columns:1fr; } .contract-page { padding:var(--space-lg) 1rem 3rem; } }
 </style>
 
@@ -50,6 +52,7 @@
     <div id="signedSignature" style="display:none;"></div>
     <div id="contractFields"></div>
     <section class="contract-section contract-terms">
+      <p class="translation-disclaimer" data-i18n="contract.translationDisclaimer">Translation notice: This translated contract is provided for convenience only. Pet Fly Inc is a U.S.-based company, and the English version is the controlling and legally binding version of this agreement.</p>
       <h2>Terms and Conditions</h2>
       <h3>Description of Service</h3><p>Pet Fly will provide transportation service for the live animal described in this contract, beginning on the effective date and according to the service quotation and travel details above.</p>
       <h3>Payments</h3><p>Payments shall be made to Pet Fly or its appointed representative in the amounts and by the due dates stated above. A shipment requiring transfer service to another international location may require an additional transfer fee. Failure to pay when due is a material breach; Pet Fly may cancel this agreement and/or seek legal remedies.</p>

@@ -87,6 +87,16 @@ test('translates known client interface phrases without changing unknown saved c
   assert.equal(i18n.translateLiteral('es', 'Mochi'), 'Mochi');
 });
 
+test('translates contract legal text and explains that English controls the agreement', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const contract = fs.readFileSync(path.join(__dirname, '..', 'views', 'contract.ejs'), 'utf8');
+
+  assert.notEqual(i18n.translateLiteral('es', 'Terms and Conditions'), 'Terms and Conditions');
+  assert.notEqual(i18n.translateLiteral('zh', 'Terms and Conditions'), 'Terms and Conditions');
+  assert.match(contract, /translation-disclaimer/);
+});
+
 function createElement(key) {
   const attributes = {
     'data-i18n': key,
