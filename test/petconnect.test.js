@@ -73,6 +73,20 @@ test('PetConnect completes public alerts, member locations, and administrator ma
   assert.match(admin, /PetConnect/);
 });
 
+test('PetConnect relays public microchip finder contacts without exposing owner details', () => {
+  const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  const registry = fs.readFileSync(path.join(__dirname, '..', 'views', 'registry.ejs'), 'utf8');
+
+  assert.match(server, /req\.query\.microchip/);
+  assert.match(server, /app\.post\('\/registry\/microchip-contact'/);
+  assert.match(server, /sendEmail\(pet\.owner_email/);
+  assert.match(registry, /name="microchip"/);
+  assert.match(registry, /name="finder_name"/);
+  assert.match(registry, /name="message"/);
+  assert.doesNotMatch(registry, /owner_email/);
+  assert.doesNotMatch(registry, /owner_phone/);
+});
+
 test('admin can diagnose and send a bounded SMTP delivery test', () => {
   const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
   const admin = fs.readFileSync(path.join(__dirname, '..', 'admin', 'app.js'), 'utf8');
