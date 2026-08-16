@@ -24,7 +24,7 @@ const PORT = process.env.PORT || 3000;
 function getSiteUrl() {
   const configured = String(process.env.SITE_URL || '').trim().replace(/\/$/, '');
   const isLocalUrl = /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?$/i.test(configured);
-  if (process.env.NODE_ENV === 'production' && isLocalUrl) return 'https://petflyinc.com';
+  if (isLocalUrl) return 'https://petflyinc.com';
   return configured || (process.env.NODE_ENV === 'production' ? 'https://petflyinc.com' : 'http://localhost:3000');
 }
 
@@ -654,6 +654,26 @@ app.get('/api/admin/petconnect/members', requireAdmin, async (req, res) => {
 app.patch('/api/admin/petconnect/members/:id', requireAdmin, async (req, res) => {
   await query('UPDATE members SET email_alerts=?, email_alert_radius=? WHERE id=?', [req.body.email_alerts ? true : false, Math.max(1, Math.min(1000, Number(req.body.email_alert_radius) || 100)), req.params.id]);
   res.json({ success: true });
+});
+
+app.put('/api/admin/petconnect/members/:id', requireAdmin, async (req, res) => {
+  const firstName = String(req.body.first_name || '').trim();
+  const lastName = String(req.body.last_name || '').trim();
+  const email = String(req.body.email || '').trim().toLowerCase();
+  if (!firstName || !lastName || !/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: 'First name, last name, and a valid email are required.' });
+  try {
+    await query('UPDATE members SET first_name=?, last_name=?, email=?, phone=?, city=?, state=?, country=?, postal_code=?, email_alerts=?, email_alert_radius=? WHERE id=?', [firstName, lastName, email, String(req.body.phone || '').trim() || null, String(req.body.city || '').trim() || null, String(req.body.state || '').trim() || null, req.body.country === 'CA' ? 'CA' : 'US', String(req.body.postal_code || '').trim() || null, req.body.email_alerts ? true : false, Math.max(1, Math.min(1000, Number(req.body.email_alert_radius) || 100)), req.params.id]);
+    res.json({ success: true });
+  } catch (err) { res.status(err.code === 'ER_DUP_ENTRY' ? 400 : 500).json({ error: err.code === 'ER_DUP_ENTRY' ? 'That email is already registered.' : 'Unable to update this member.' }); }
+});
+
+app.delete('/api/admin/petconnect/members/:id', requireAdmin, async (req, res) => {
+  try {
+    const members = await query('SELECT id FROM members WHERE id=?', [req.params.id]);
+    if (!members.length) return res.status(404).json({ error: 'Member not found.' });
+    await query('DELETE FROM members WHERE id=?', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: 'Unable to delete this member.' }); }
 });
 
 app.get('/api/admin/petconnect/pets', requireAdmin, async (req, res) => {

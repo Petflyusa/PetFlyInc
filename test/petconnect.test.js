@@ -28,7 +28,9 @@ test('PetConnect exposes member authentication and pet routes', () => {
   assert.match(server, /app\.post\('\/resend-verification'/);
   assert.match(server, /connectionTimeout: 10000/);
   assert.match(server, /function getSiteUrl\(\)/);
-  assert.match(server, /NODE_ENV === 'production' && isLocalUrl/);
+  assert.match(server, /if \(isLocalUrl\)/);
+  assert.match(server, /app\.put\('\/api\/admin\/petconnect\/members\/:id'/);
+  assert.match(server, /app\.delete\('\/api\/admin\/petconnect\/members\/:id'/);
   assert.match(server, /microchip_number/);
   assert.match(registerView, /name="email"/);
   assert.match(dashboardView, /name="microchip_number"/);
@@ -80,4 +82,6 @@ test('admin can diagnose and send a bounded SMTP delivery test', () => {
   assert.match(server, /mailTransporter\.verify\(\)/);
   assert.match(admin, /testEmailDelivery/);
   assert.match(admin, /emailHealthStatus/);
+  assert.match(admin, /editPetConnectMember/);
+  assert.match(admin, /deletePetConnectMember/);
 });
