@@ -378,6 +378,21 @@ label.field-label {
 .toast.error { border-color: rgba(200,40,40,0.4); color: #ff8080; }
 
 /* ── Responsive ── */
+.admin-subnav { display: none; padding: 0 0 0.35rem 1.75rem; }
+.admin-subnav.is-open { display: block; }
+.nav-subbtn { width: 100%; text-align: left; padding: 0.5rem 0.75rem; font-size: 0.78rem; color: var(--text-muted); }
+.nav-subbtn.active { color: var(--accent); background: rgba(255,255,255,0.06); }
+.pc-nav-chevron { margin-left: auto; font-size: 0.65rem; }
+.pc-filterbar { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1rem; align-items: center; }
+.pc-filterbar input, .pc-filterbar select { min-width: 150px; flex: 1 1 150px; }
+.pc-filterbar input { max-width: 280px; }
+.pc-summary-card { border: 1px solid var(--border); cursor: pointer; text-align: left; }
+.pc-summary-card small { display: block; color: var(--text-muted); margin-top: 0.25rem; }
+.pc-bulkbar { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; margin-bottom: 1rem; }
+.pc-bulkbar span { color: var(--text-muted); font-size: 0.85rem; }
+.csv-review { display: grid; gap: 0.6rem; padding: 1rem; margin-bottom: 1rem; background: var(--surface); border: 1px solid var(--border); }
+.csv-review label { font-size: 0.85rem; }
+
 @media (max-width: 760px) {
   body.admin-nav-open { overflow: hidden; }
   .admin-mobile-header {

@@ -83,6 +83,39 @@ test('PetConnect admin migration supports full member addresses and organization
   assert.match(database, /006_petconnect_admin\.sql/);
 });
 
+test('PetConnect admin provides dashboard summaries and filtered dedicated data APIs', () => {
+  const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  assert.match(server, /app\.get\('\/api\/admin\/petconnect\/summary'/);
+  assert.match(server, /req\.query\.verified/);
+  assert.match(server, /req\.query\.missing/);
+  assert.match(server, /req\.query\.alert_type/);
+  assert.match(server, /req\.query\.partner_type_id/);
+  assert.match(server, /address_line/);
+  assert.match(server, /geocodeAddress\(\[addressLine, city, state, postalCode, country\]\)/);
+});
+
+test('Admin PetConnect uses dashboard and dedicated searchable workspaces', () => {
+  const admin = fs.readFileSync(path.join(__dirname, '..', 'views', 'admin.ejs'), 'utf8');
+  const app = fs.readFileSync(path.join(__dirname, '..', 'admin', 'app.js'), 'utf8');
+  ['petconnect-overview', 'petconnect-members', 'petconnect-pets', 'petconnect-alerts', 'petconnect-partners'].forEach(section => assert.match(admin, new RegExp('section-' + section)));
+  assert.match(admin, /PetConnect Overview/);
+  assert.match(app, /loadPetConnectOverview/);
+  assert.match(app, /loadPetConnectMembers/);
+  assert.match(app, /loadPetConnectPartners/);
+  assert.match(app, /previewPartnerCsv/);
+  assert.match(app, /inviteSelectedPartners/);
+});
+
+test('PetConnect admins can preview CSV organizations and invite selected records', () => {
+  const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  assert.match(server, /app\.post\('\/api\/admin\/petconnect\/partners\/csv-preview'/);
+  assert.match(server, /app\.post\('\/api\/admin\/petconnect\/partners\/csv-import'/);
+  assert.match(server, /app\.post\('\/api\/admin\/petconnect\/partners\/invite'/);
+  assert.match(server, /crypto\.randomBytes\(32\)\.toString\('hex'\)/);
+  assert.match(server, /invitation_expires_at=DATE_ADD\(NOW\(\), INTERVAL 14 DAY\)/);
+  assert.match(server, /sendEmail\(partner\.email/);
+});
+
 test('PetConnect relays public microchip finder contacts without exposing owner details', () => {
   const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
   const registry = fs.readFileSync(path.join(__dirname, '..', 'views', 'registry.ejs'), 'utf8');
