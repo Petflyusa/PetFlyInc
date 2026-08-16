@@ -42,4 +42,7 @@ test('groups quote and contract under the services navigation menu', () => {
   assert.match(header, /href="\/quote"/);
   assert.match(header, /href="\/contract"/);
   assert.match(styles, /\.services-submenu/);
+  assert.match(styles, /top: 100%;/);
+  assert.match(styles, /background: transparent;/);
+  assert.match(styles, /#siteHeader\.scrolled \.services-submenu \{[\s\S]*background: var\(--cream\);/);
 });

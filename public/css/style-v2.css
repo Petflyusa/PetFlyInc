@@ -111,15 +111,14 @@ button { cursor: pointer; font-family: inherit; }
 }
 .services-submenu {
   position: absolute;
-  top: calc(100% + 0.9rem);
+  top: 100%;
   left: -1rem;
   z-index: 120;
   display: none !important;
   min-width: 9rem;
-  padding: 0.45rem 0;
-  background: var(--cream);
-  border: 1px solid var(--warm-gray-100);
-  box-shadow: 0 12px 28px rgba(0,0,0,0.14);
+  padding: 0.7rem 0 0;
+  background: transparent;
+  border: 1px solid transparent;
 }
 .services-nav-item:hover .services-submenu,
 .services-nav-item:focus-within .services-submenu { display: block !important; }
@@ -127,13 +126,20 @@ button { cursor: pointer; font-family: inherit; }
 #siteHeader nav .services-submenu a {
   display: block;
   padding: 0.55rem 1rem;
-  color: var(--charcoal);
+  color: rgba(255,255,255,0.9);
   white-space: nowrap;
 }
 #siteHeader nav .services-submenu a:hover,
-#siteHeader nav .services-submenu a.active { color: var(--accent); background: var(--warm-gray-100); }
+#siteHeader nav .services-submenu a.active { color: #fff; background: rgba(255,255,255,0.14); }
 #siteHeader.scrolled .services-nav-chevron { color: rgba(26,26,26,0.65); }
+#siteHeader.scrolled .services-submenu {
+  background: var(--cream);
+  border-color: var(--warm-gray-100);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.14);
+}
 #siteHeader.scrolled nav .services-submenu a { color: var(--charcoal); }
+#siteHeader.scrolled nav .services-submenu a:hover,
+#siteHeader.scrolled nav .services-submenu a.active { color: var(--accent); background: var(--warm-gray-100); }
 #siteHeader nav a {
   font-size: 0.8125rem;
   font-weight: 400;
