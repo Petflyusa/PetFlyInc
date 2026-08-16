@@ -12,6 +12,7 @@ const mysql = require('mysql2/promise');
 const nodemailer = require('nodemailer');
 const { blankContractData, createContractNumber, canEditContract, mergeClientContractData, normalizeContractData } = require('./lib/contracts');
 const { ensureContractSchema, sendContractDatabaseError } = require('./lib/contract-database');
+const { ensureQuoteSchema } = require('./lib/quote-database');
 const { generateContractPdf } = require('./lib/contract-pdf');
 const { documentCategories, documentExpiryStatus, isActiveRelocation, normalizeYouTubeUrl, relocationSteps } = require('./lib/portal');
 const { defaultFooter } = require('./lib/site');
@@ -70,7 +71,7 @@ const pool = mysql.createPool({
 
 // Existing databases predate the contracts table. Apply the additive migration
 // at startup so contract issuance is available immediately after a restart.
-ensureContractSchema(pool).then(() => {
+Promise.all([ensureContractSchema(pool), ensureQuoteSchema(pool)]).then(() => {
   console.log('[Contract database] Schema ready');
 }).catch(err => {
   console.error('[Contract database] Schema setup failed:', err.message);
