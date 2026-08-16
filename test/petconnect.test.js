@@ -73,6 +73,16 @@ test('PetConnect completes public alerts, member locations, and administrator ma
   assert.match(admin, /PetConnect/);
 });
 
+test('PetConnect admin migration supports full member addresses and organization invitations', () => {
+  const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations', '006_petconnect_admin.sql'), 'utf8');
+  const database = fs.readFileSync(path.join(__dirname, '..', 'lib', 'petconnect-database.js'), 'utf8');
+
+  assert.match(migration, /ALTER TABLE members ADD COLUMN address_line VARCHAR\(255\) NULL/i);
+  assert.match(migration, /ALTER TABLE rescue_partners ADD COLUMN invitation_sent_at TIMESTAMP NULL/i);
+  assert.match(migration, /ALTER TABLE rescue_partners ADD COLUMN invitation_expires_at TIMESTAMP NULL/i);
+  assert.match(database, /006_petconnect_admin\.sql/);
+});
+
 test('PetConnect relays public microchip finder contacts without exposing owner details', () => {
   const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
   const registry = fs.readFileSync(path.join(__dirname, '..', 'views', 'registry.ejs'), 'utf8');
