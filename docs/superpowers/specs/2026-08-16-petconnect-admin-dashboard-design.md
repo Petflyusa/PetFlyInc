@@ -43,11 +43,23 @@ Display pet, reporter, type, location, and status. Server-side search matches pe
 
 ### Organizations
 
-Display organization, type, location, verification, and active status. Server-side search matches organization name, contact name, email, city, and state. Filters cover organization type, active status, verification status, and country. Existing add, active toggle, and deletion actions remain available.
+Display organization, type, location, verification, invitation, and active status. Server-side search matches organization name, contact name, email, city, and state. Filters cover organization type, active status, verification status, invitation status, and country. Existing add, active toggle, and deletion actions remain available.
+
+### Organization CSV Import
+
+Administrators can download a CSV template and upload a CSV to a review screen before any organization records are created. The template supports organization name, contact name, email, phone, street address, city, state or province, postal code, country, organization type, and website.
+
+The review validates required organization name, contact name, email, city, country, and organization type fields; normalizes country values; identifies duplicate existing emails and duplicate rows; and lets the administrator save valid rows while skipping rejected rows. Imported organizations begin uninvited, unverified, and inactive. Their full address is geocoded at import time.
+
+### Organization Invitations
+
+Administrators select one or more uninvited or expired-invitation organizations from the Organizations workspace, then explicitly send invitations. An invitation creates a secure, expiring claim token and emails a PetConnect link that lets the organization set a password and complete its profile.
+
+The organization table exposes Uninvited, Invited, Claimed, and Active states, along with the most recent invitation date. Email is never sent during CSV import. Administrators can resend an expired invitation to selected organizations.
 
 ## Data Flow
 
-The overview receives a protected summary endpoint returning totals only. Each workspace requests its own protected endpoint with search and filter query parameters. The admin client refreshes only the active workspace after an edit or deletion.
+The overview receives a protected summary endpoint returning totals only. Each workspace requests its own protected endpoint with search and filter query parameters. The organization workspace also uses protected CSV preview/import and selected-invitation endpoints. The admin client refreshes only the active workspace after an edit, deletion, import, or invitation action.
 
 ## Complete Address Capture
 
@@ -59,4 +71,4 @@ Pet records and finder contact forms do not collect an address because they do n
 
 ## Error Handling and Testing
 
-Empty filter results show an explicit empty state. API failures show the existing admin toast error. Tests verify the dashboard navigation, summary API, server-side filter parameters, separate render targets, and retained management controls.
+Empty filter results show an explicit empty state. CSV validation failures identify their row and field without persisting that row. API failures show the existing admin toast error. Tests verify the dashboard navigation, summary API, server-side filter parameters, separate render targets, retained management controls, CSV validation/import behavior, and selected-invitation behavior.
