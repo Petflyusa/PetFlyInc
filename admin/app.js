@@ -8,7 +8,7 @@ var state = {
   content: {},
   countries: [],
   airlines: [],
-  contracts: []
+  contracts: [], petconnect: { members: [], pets: [], alerts: [], partners: [], types: [] }
 };
 
 var toastTimeout;
@@ -54,6 +54,7 @@ function showSection(name) {
   if (name === 'quotes') loadQuotes();
   if (name === 'contacts') loadContacts();
   if (name === 'contracts') loadContracts();
+  if (name === 'petconnect') loadPetConnect();
   if (name === 'content') loadLandingContent();
   if (name === 'countries') loadCountries();
   if (name === 'airlines') loadAirlines();
@@ -410,6 +411,30 @@ function calculateAdminContractTotals() { var total=quoteAmountFields.reduce(fun
 async function saveContract(issue) { var id=document.getElementById('fContractId').value, payload={contract_data:collectContractData(),quote_request_id:document.getElementById('fContractQuote').value||null}; var url=id?'/api/admin/contracts/'+id:'/api/admin/contracts',method=id?'PUT':'POST'; try { var r=await fetch(url,{...creds,method:method,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}),d=await r.json();if(!r.ok)throw new Error(d.error); var contractId=id||d.id;if(issue){r=await fetch('/api/admin/contracts/'+contractId+'/issue',{...creds,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});d=await r.json();if(!r.ok)throw new Error(d.error);showToast('Contract issued: '+(id?'':' '+d.contract_number),'success');}else showToast('Contract draft saved','success');closeModal();loadContracts(); } catch(e){showToast(e.message||'Could not save contract','error');} }
 async function issueContract(id) { var c=state.contracts.find(function(x){return x.id===id;});if(!c)return; openModal('Issue Contract',contractEditorHtml(c)); calculateAdminContractTotals(); await populateContractQuotes(c.quote_request_id); }
 function copyContractLink(number) { var link=window.location.origin+'/contract'; navigator.clipboard.writeText(link); showToast('Client link copied. Give the client contract number '+number,'success'); }
+
+// ── PetConnect ─────────────────────────────────────────────────────────────
+async function loadPetConnect() {
+  try {
+    var results = await Promise.all(['members','pets','alerts','partners','partner-types'].map(function(name) { return fetch('/api/admin/petconnect/' + name, creds).then(function(r) { return r.json(); }); }));
+    state.petconnect.members = results[0].members || []; state.petconnect.pets = results[1].pets || []; state.petconnect.alerts = results[2].alerts || []; state.petconnect.partners = results[3].partners || []; state.petconnect.types = results[4].types || [];
+    renderPetConnect();
+  } catch (err) { console.error(err); showToast('Could not load PetConnect', 'error'); }
+}
+function pcTable(id, headers, rows) { document.getElementById(id).innerHTML = rows.length ? '<table class="data-table"><thead><tr>' + headers.map(function(h){return '<th>'+h+'</th>';}).join('') + '</tr></thead><tbody>' + rows.join('') + '</tbody></table>' : '<div class="empty-state">No records yet.</div>'; }
+function renderPetConnect() {
+  var pc=state.petconnect;
+  pcTable('petconnectMembers',['Member','Location','Verified','Email alerts',''],pc.members.map(function(m){return '<tr><td><strong>'+escHtml(m.first_name+' '+m.last_name)+'</strong><br>'+escHtml(m.email)+'</td><td>'+escHtml([m.city,m.state,m.country].filter(Boolean).join(', ')||'—')+'</td><td>'+ (m.is_verified?'Yes':'No')+'</td><td><label><input type="checkbox" '+(m.email_alerts?'checked':'')+' onchange="savePetConnectMember('+m.id+',this.checked,'+(m.email_alert_radius||100)+')"> '+escHtml(m.email_alert_radius||100)+' mi</label></td><td></td></tr>'; }));
+  pcTable('petconnectPets',['Pet','Microchip','Owner','Missing'],pc.pets.map(function(p){return '<tr><td><strong>'+escHtml(p.pet_name)+'</strong><br>'+escHtml([p.species,p.breed,p.color].filter(Boolean).join(' · '))+'</td><td>'+escHtml(p.microchip_number||'—')+'</td><td>'+escHtml(p.member_name)+'<br>'+escHtml(p.member_email)+'</td><td>'+(p.is_missing?'Yes':'No')+'</td></tr>'; }));
+  pcTable('petconnectAlerts',['Pet','Type / Location','Status','Actions'],pc.alerts.map(function(a){return '<tr><td><strong>'+escHtml(a.pet_name)+'</strong><br>'+escHtml(a.member_email)+'</td><td>'+escHtml(a.alert_type)+'<br>'+escHtml([a.last_seen_city,a.last_seen_state].filter(Boolean).join(', '))+'</td><td><select onchange="savePetConnectAlert('+a.id+',this.value)"><option '+(a.status==='active'?'selected':'')+'>active</option><option '+(a.status==='found'?'selected':'')+'>found</option><option '+(a.status==='closed'?'selected':'')+'>closed</option></select></td><td><button class="btn-danger" onclick="deletePetConnectAlert('+a.id+')"><i class="fas fa-trash"></i></button></td></tr>'; }));
+  pcTable('petconnectPartners',['Organization','Type','Location','Active','Actions'],pc.partners.map(function(p){return '<tr><td><strong>'+escHtml(p.company_name)+'</strong><br>'+escHtml(p.email)+'</td><td>'+escHtml(p.type_label)+'</td><td>'+escHtml([p.city,p.state,p.country].filter(Boolean).join(', '))+'</td><td><input type="checkbox" '+(p.is_active?'checked':'')+' onchange="togglePetConnectPartner('+p.id+',this.checked)"></td><td><button class="btn-danger" onclick="deletePetConnectPartner('+p.id+')"><i class="fas fa-trash"></i></button></td></tr>'; }));
+}
+async function savePetConnectMember(id, alerts, radius) { await fetch('/api/admin/petconnect/members/'+id,{...creds,method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({email_alerts:alerts,email_alert_radius:radius})}); showToast('Member preferences saved','success'); }
+async function savePetConnectAlert(id,status) { await fetch('/api/admin/petconnect/alerts/'+id,{...creds,method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:status})}); showToast('Alert updated','success'); loadPetConnect(); }
+async function deletePetConnectAlert(id) { if(!confirm('Delete this alert?'))return; await fetch('/api/admin/petconnect/alerts/'+id,{...creds,method:'DELETE'}); loadPetConnect(); }
+async function togglePetConnectPartner(id,active) { var partner=state.petconnect.partners.find(function(p){return p.id===id;}); if(!partner)return; await fetch('/api/admin/petconnect/partners/'+id,{...creds,method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({...partner,is_active:active})}); showToast('Partner updated','success'); }
+async function deletePetConnectPartner(id) { if(!confirm('Delete this partner?'))return; await fetch('/api/admin/petconnect/partners/'+id,{...creds,method:'DELETE'}); loadPetConnect(); }
+function newPetConnectPartner() { var types=state.petconnect.types||[]; var options=types.map(function(t){return '<option value="'+t.id+'">'+escHtml(t.label)+'</option>';}).join(''); openModal('Add PetConnect Partner','<div class="form-row"><div class="form-group"><label>Type</label><select id="pcType" class="field-input">'+options+'</select></div><div class="form-group"><label>Organization</label><input id="pcCompany" class="field-input"></div><div class="form-group"><label>Contact</label><input id="pcContact" class="field-input"></div><div class="form-group"><label>Email</label><input id="pcEmail" type="email" class="field-input"></div></div><div class="form-row"><div class="form-group"><label>Phone</label><input id="pcPhone" class="field-input"></div><div class="form-group"><label>City</label><input id="pcCity" class="field-input"></div><div class="form-group"><label>State</label><input id="pcState" class="field-input"></div><div class="form-group"><label>Country</label><select id="pcCountry" class="field-input"><option value="US">United States</option><option value="CA">Canada</option></select></div></div><div class="form-actions"><button class="btn-outline" onclick="closeModal()">Cancel</button><button class="btn-primary-sm" onclick="savePetConnectPartner()">Save Partner</button></div>'); }
+async function savePetConnectPartner() { var payload={partner_type_id:document.getElementById('pcType').value,company_name:document.getElementById('pcCompany').value,contact_name:document.getElementById('pcContact').value,email:document.getElementById('pcEmail').value,phone:document.getElementById('pcPhone').value,city:document.getElementById('pcCity').value,state:document.getElementById('pcState').value,country:document.getElementById('pcCountry').value}; var r=await fetch('/api/admin/petconnect/partners',{...creds,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});var d=await r.json();if(!r.ok){showToast(d.error||'Could not add partner','error');return;}closeModal();loadPetConnect();showToast('Partner added','success');}
 
 // ── Relocation Portal ──────────────────────────────────────────────────────
 var portalContractId = null;

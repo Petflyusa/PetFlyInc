@@ -203,6 +203,36 @@ function requireMember(req, res, next) {
   return res.redirect('/login?next=' + encodeURIComponent(req.originalUrl));
 }
 
+function requirePartner(req, res, next) {
+  if (req.session && req.session.partnerId) return next();
+  return res.redirect('/partner/claim');
+}
+
+let geocodeQueue = Promise.resolve();
+let lastGeocodeAt = 0;
+function geocodeAddress(parts) {
+  const address = parts.filter(Boolean).join(', ');
+  if (!address) return Promise.resolve(null);
+  const task = geocodeQueue.then(async () => {
+    const delay = Math.max(0, 1100 - (Date.now() - lastGeocodeAt));
+    if (delay) await new Promise(resolve => setTimeout(resolve, delay));
+    lastGeocodeAt = Date.now();
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(address)}`, { headers: { 'User-Agent': 'PetFlyInc-PetConnect/1.0 (info@petflyinc.com)' } });
+      const results = await response.json();
+      if (!results[0]) return null;
+      return { latitude: Number(results[0].lat), longitude: Number(results[0].lon) };
+    } catch (err) {
+      console.warn('[PetConnect geocoding]', err.message);
+      return null;
+    }
+  });
+  geocodeQueue = task.catch(() => {});
+  return task;
+}
+
+function radiusKilometers(radius, unit) { return unit === 'mi' ? Number(radius) * 1.60934 : Number(radius); }
+
 // ── Landing Content Helpers ─────────────────────────────────────────────────
 async function getLandingContent() {
   const rows = await query('SELECT section_key, content FROM landing_content');
@@ -294,7 +324,26 @@ app.get('/contract', async (req, res) => {
 
 // ── PetConnect Member Routes ─────────────────────────────────────────────
 app.get('/registry', async (req, res) => {
-  res.render('registry', { footer: await getFooter() });
+  const country = req.query.country === 'CA' ? 'CA' : req.query.country === 'US' ? 'US' : '';
+  const species = ['Dog', 'Cat', 'Bird', 'Other'].includes(req.query.species) ? req.query.species : '';
+  const alertType = ['lost', 'found'].includes(req.query.type) ? req.query.type : '';
+  const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+  const filters = ["a.status='active'"];
+  const params = [];
+  if (country) { filters.push('a.last_seen_country=?'); params.push(country); }
+  if (species) { filters.push('p.species=?'); params.push(species); }
+  if (alertType) { filters.push('a.alert_type=?'); params.push(alertType); }
+  const where = filters.join(' AND ');
+  const totals = await query(`SELECT COUNT(*) AS total FROM missing_alerts a JOIN registered_pets p ON p.id=a.pet_id WHERE ${where}`, params);
+  const perPage = 12;
+  const alerts = await query(`SELECT a.*, p.pet_name, p.species, p.breed, p.color, p.photo_filename AS pet_photo FROM missing_alerts a JOIN registered_pets p ON p.id=a.pet_id WHERE ${where} ORDER BY a.created_at DESC LIMIT ? OFFSET ?`, [...params, perPage, (page - 1) * perPage]);
+  res.render('registry', { footer: await getFooter(), alerts, filters: { country, species, alertType }, page, pages: Math.max(1, Math.ceil(totals[0].total / perPage)) });
+});
+
+app.get('/alert/:id', async (req, res) => {
+  const alerts = await query(`SELECT a.*, p.pet_name, p.species, p.breed, p.color, p.gender, p.birth_date, p.photo_filename AS pet_photo FROM missing_alerts a JOIN registered_pets p ON p.id=a.pet_id WHERE a.id=?`, [req.params.id]);
+  if (!alerts.length) return res.status(404).render('404');
+  res.render('alert-detail', { footer: await getFooter(), alert: alerts[0] });
 });
 
 app.get('/register', async (req, res) => {
@@ -313,7 +362,11 @@ app.post('/register', async (req, res) => {
   try {
     const token = crypto.randomBytes(32).toString('hex');
     const hash = await bcrypt.hash(password, 12);
-    await query('INSERT INTO members (email, password_hash, first_name, last_name, phone, city, state, country, postal_code, verify_token) VALUES (?,?,?,?,?,?,?,?,?,?)', [email, hash, firstName, lastName, String(req.body.phone || '').trim() || null, String(req.body.city || '').trim() || null, String(req.body.state || '').trim() || null, country, String(req.body.postal_code || '').trim() || null, token]);
+    const city = String(req.body.city || '').trim() || null;
+    const state = String(req.body.state || '').trim() || null;
+    const postalCode = String(req.body.postal_code || '').trim() || null;
+    const coordinates = await geocodeAddress([city, state, postalCode, country]);
+    await query('INSERT INTO members (email, password_hash, first_name, last_name, phone, city, state, country, postal_code, latitude, longitude, verify_token, verify_token_expires_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,DATE_ADD(NOW(), INTERVAL 48 HOUR))', [email, hash, firstName, lastName, String(req.body.phone || '').trim() || null, city, state, country, postalCode, coordinates && coordinates.latitude || null, coordinates && coordinates.longitude || null, token]);
     const verifyUrl = `${process.env.SITE_URL || 'http://localhost:3000'}/verify/${token}`;
     await sendEmail(email, 'Verify your PetConnect account', `<p>Welcome to PetConnect.</p><p><a href="${verifyUrl}">Verify your email address</a> to activate your account.</p>`);
     res.render('login', { footer: await getFooter(), error: 'Account created. Check your email to verify your account before signing in.' });
@@ -326,7 +379,7 @@ app.post('/register', async (req, res) => {
 
 app.get('/verify/:token', async (req, res) => {
   try {
-    const result = await query('UPDATE members SET is_verified=TRUE, verify_token=NULL WHERE verify_token=?', [req.params.token]);
+    const result = await query('UPDATE members SET is_verified=TRUE, verify_token=NULL, verify_token_expires_at=NULL WHERE verify_token=? AND (verify_token_expires_at IS NULL OR verify_token_expires_at > NOW())', [req.params.token]);
     if (!result.affectedRows) return res.status(400).send('This verification link is invalid or has already been used.');
     res.redirect('/login?verified=1');
   } catch (err) { console.error('[PetConnect verification]', err); res.status(500).send('Unable to verify this account right now.'); }
@@ -346,7 +399,8 @@ app.post('/login', async (req, res) => {
     if (!member.is_verified) return res.status(403).render('login', { footer: await getFooter(), error: 'Please verify your email before signing in.' });
     req.session.memberId = member.id;
     req.session.memberEmail = member.email;
-    res.redirect(req.body.next || '/dashboard');
+    const next = String(req.body.next || '');
+    res.redirect(next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard');
   } catch (err) { console.error('[PetConnect login]', err); res.status(500).render('login', { footer: await getFooter(), error: 'Unable to sign in right now.' }); }
 });
 
@@ -358,11 +412,17 @@ app.post('/logout', requireMember, (req, res) => {
 
 app.get('/dashboard', requireMember, async (req, res) => {
   try {
-    const members = await query('SELECT id, first_name, last_name, email FROM members WHERE id=?', [req.session.memberId]);
+    const members = await query('SELECT id, first_name, last_name, email, email_alerts, email_alert_radius FROM members WHERE id=?', [req.session.memberId]);
     if (!members.length) return res.redirect('/login');
     const pets = await query('SELECT id, pet_name, microchip_number, species, breed, color, gender, birth_date, photo_filename, notes, is_missing FROM registered_pets WHERE member_id=? ORDER BY registered_at DESC', [req.session.memberId]);
     res.render('petconnect-dashboard', { footer: await getFooter(), member: members[0], pets, petError: req.query.pet_error || null });
   } catch (err) { console.error('[PetConnect dashboard]', err); res.status(500).send('Unable to load your PetConnect dashboard right now.'); }
+});
+
+app.post('/dashboard/preferences', requireMember, async (req, res) => {
+  const radius = Math.max(1, Math.min(1000, Number(req.body.email_alert_radius) || 100));
+  await query('UPDATE members SET email_alerts=?, email_alert_radius=? WHERE id=?', [req.body.email_alerts ? true : false, radius, req.session.memberId]);
+  res.redirect('/dashboard');
 });
 
 app.post('/api/petconnect/pets', requireMember, (req, res, next) => {
@@ -396,6 +456,219 @@ app.post('/api/petconnect/pets/:id/delete', requireMember, async (req, res) => {
     res.redirect('/dashboard');
   } catch (err) { console.error('[PetConnect pet deletion]', err); res.redirect('/dashboard?pet_error=Unable to delete this pet right now.'); }
 });
+
+async function petConnectFooter() { return getFooter(); }
+
+async function notificationRecipients(alert, excludeMemberId) {
+  const radiusKm = radiusKilometers(alert.search_radius, alert.radius_unit);
+  const hasCoordinates = Number.isFinite(Number(alert.last_seen_latitude)) && Number.isFinite(Number(alert.last_seen_longitude));
+  const memberSql = hasCoordinates
+    ? `SELECT id, email, first_name FROM members WHERE is_verified=TRUE AND email_alerts=TRUE AND country=? AND id<>? AND latitude IS NOT NULL AND longitude IS NOT NULL
+       AND (6371 * ACOS(LEAST(1.0, COS(RADIANS(?))*COS(RADIANS(latitude))*COS(RADIANS(longitude)-RADIANS(?))+SIN(RADIANS(?))*SIN(RADIANS(latitude))))) <= ?`
+    : 'SELECT id, email, first_name FROM members WHERE is_verified=TRUE AND email_alerts=TRUE AND country=? AND id<>?';
+  const partnerSql = hasCoordinates
+    ? `SELECT id, email, company_name FROM rescue_partners WHERE is_active=TRUE AND is_verified=TRUE AND country=? AND latitude IS NOT NULL AND longitude IS NOT NULL
+       AND (6371 * ACOS(LEAST(1.0, COS(RADIANS(?))*COS(RADIANS(latitude))*COS(RADIANS(longitude)-RADIANS(?))+SIN(RADIANS(?))*SIN(RADIANS(latitude))))) <= ?`
+    : 'SELECT id, email, company_name FROM rescue_partners WHERE is_active=TRUE AND is_verified=TRUE AND country=?';
+  const geoParams = [alert.last_seen_country, excludeMemberId, alert.last_seen_latitude, alert.last_seen_longitude, alert.last_seen_latitude, radiusKm];
+  const partnerGeoParams = [alert.last_seen_country, alert.last_seen_latitude, alert.last_seen_longitude, alert.last_seen_latitude, radiusKm];
+  const [members, partners] = await Promise.all([
+    query(memberSql, hasCoordinates ? geoParams : [alert.last_seen_country, excludeMemberId]),
+    query(partnerSql, hasCoordinates ? partnerGeoParams : [alert.last_seen_country])
+  ]);
+  return { members, partners };
+}
+
+async function sendAlertNotifications(alert, pet) {
+  const recipients = await notificationRecipients(alert, alert.member_id);
+  const siteUrl = process.env.SITE_URL || 'http://localhost:3000';
+  const detailUrl = `${siteUrl}/alert/${alert.id}`;
+  const label = alert.alert_type === 'found' ? 'FOUND PET' : 'LOST PET';
+  const subject = `[${label}] ${pet.pet_name} - ${pet.species}, ${alert.last_seen_city || 'Unknown location'}${alert.last_seen_state ? `, ${alert.last_seen_state}` : ''}`;
+  const html = `<h2>${label}: ${pet.pet_name}</h2><p><strong>Last seen:</strong> ${alert.last_seen_location || [alert.last_seen_city, alert.last_seen_state].filter(Boolean).join(', ') || 'Location not provided'}</p><p><strong>Date:</strong> ${alert.last_seen_date || 'Not provided'}</p><p>${alert.description || ''}</p><p><a href="${detailUrl}">View full alert details</a></p>`;
+  const entries = recipients.members.map(member => ({ type: 'member', id: member.id, email: member.email })).concat(recipients.partners.map(partner => ({ type: 'partner', id: partner.id, email: partner.email })));
+  for (let index = 0; index < entries.length; index += 30) {
+    const batch = entries.slice(index, index + 30);
+    await Promise.all(batch.map(async recipient => {
+      const existing = await query(`SELECT id FROM alert_notifications WHERE alert_id=? AND ${recipient.type === 'member' ? 'recipient_member_id' : 'recipient_partner_id'}=? AND notified_at > NOW() - INTERVAL 7 DAY`, [alert.id, recipient.id]);
+      if (existing.length) return;
+      const sent = await sendEmail(recipient.email, subject, html);
+      if (sent) await query(`INSERT INTO alert_notifications (alert_id, ${recipient.type === 'member' ? 'recipient_member_id' : 'recipient_partner_id'}) VALUES (?,?)`, [alert.id, recipient.id]);
+    }));
+    if (index + 30 < entries.length) await new Promise(resolve => setTimeout(resolve, 2000));
+  }
+  await query('UPDATE missing_alerts SET email_sent_at=NOW() WHERE id=?', [alert.id]);
+}
+
+app.get('/dashboard/missing/new', requireMember, async (req, res) => {
+  const pets = await query('SELECT id, pet_name, species FROM registered_pets WHERE member_id=? ORDER BY pet_name', [req.session.memberId]);
+  res.render('missing-alert', { footer: await petConnectFooter(), pets, error: null, today: new Date().toISOString().slice(0, 10) });
+});
+
+app.post('/dashboard/missing/new', requireMember, (req, res, next) => {
+  petUpload.single('photo')(req, res, err => {
+    if (err) return res.status(400).send('Use a JPG, PNG, WebP, or GIF photo no larger than 2 MB.');
+    next();
+  });
+}, async (req, res) => {
+  const petId = Number(req.body.pet_id);
+  const alertType = req.body.alert_type === 'found' ? 'found' : 'lost';
+  const country = req.body.last_seen_country === 'CA' ? 'CA' : 'US';
+  const radius = Number(req.body.search_radius);
+  const unit = req.body.radius_unit === 'km' ? 'km' : 'mi';
+  const pets = await query('SELECT id, pet_name, species FROM registered_pets WHERE id=? AND member_id=?', [petId, req.session.memberId]);
+  if (!pets.length || ![50, 100, 150, 200].includes(radius)) return res.status(400).send('Select one of your pets and a valid search radius.');
+  try {
+    const location = String(req.body.last_seen_location || '').trim();
+    const city = String(req.body.last_seen_city || '').trim();
+    const state = String(req.body.last_seen_state || '').trim();
+    const coordinates = await geocodeAddress([location, city, state, country]);
+    const [result] = await pool.execute(`INSERT INTO missing_alerts (pet_id, member_id, alert_type, last_seen_location, last_seen_city, last_seen_state, last_seen_country, last_seen_latitude, last_seen_longitude, last_seen_date, search_radius, radius_unit, contact_info, reward, description, photo_filename) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [petId, req.session.memberId, alertType, location || null, city || null, state || null, country, coordinates && coordinates.latitude || null, coordinates && coordinates.longitude || null, req.body.last_seen_date || null, radius, unit, String(req.body.contact_info || '').trim() || null, String(req.body.reward || '').trim() || null, String(req.body.description || '').trim() || null, req.file ? `/uploads/pets/${req.file.filename}` : null]);
+    if (alertType === 'lost') await query('UPDATE registered_pets SET is_missing=TRUE WHERE id=?', [petId]);
+    const alert = { id: result.insertId, member_id: req.session.memberId, alert_type: alertType, last_seen_location: location, last_seen_city: city, last_seen_state: state, last_seen_country: country, last_seen_latitude: coordinates && coordinates.latitude, last_seen_longitude: coordinates && coordinates.longitude, last_seen_date: req.body.last_seen_date, search_radius: radius, radius_unit: unit, description: String(req.body.description || '').trim() };
+    sendAlertNotifications(alert, pets[0]).catch(err => console.error('[PetConnect alert delivery]', err));
+    res.redirect('/dashboard/alerts');
+  } catch (err) { console.error('[PetConnect alert]', err); res.status(500).send('Unable to create this alert right now.'); }
+});
+
+app.get('/dashboard/alerts', requireMember, async (req, res) => {
+  const alerts = await query(`SELECT a.*, p.pet_name, p.species FROM missing_alerts a JOIN registered_pets p ON p.id=a.pet_id WHERE a.member_id=? ORDER BY a.created_at DESC`, [req.session.memberId]);
+  res.render('member-alerts', { footer: await petConnectFooter(), alerts });
+});
+
+app.post('/dashboard/alerts/:id/found', requireMember, async (req, res) => {
+  const alerts = await query('SELECT id, pet_id FROM missing_alerts WHERE id=? AND member_id=? AND status=\'active\'', [req.params.id, req.session.memberId]);
+  if (!alerts.length) return res.redirect('/dashboard/alerts');
+  await query('UPDATE missing_alerts SET status=\'found\', resolved_at=NOW() WHERE id=?', [alerts[0].id]);
+  await query('UPDATE registered_pets SET is_missing=FALSE WHERE id=?', [alerts[0].pet_id]);
+  res.redirect('/dashboard/alerts');
+});
+
+app.get('/partners', async (req, res) => {
+  const type = String(req.query.type || '');
+  const country = req.query.country === 'CA' ? 'CA' : req.query.country === 'US' ? 'US' : '';
+  const partners = await query(`SELECT rp.*, pt.slug AS type_slug, pt.label AS type_label FROM rescue_partners rp JOIN partner_types pt ON pt.id=rp.partner_type_id WHERE rp.is_active=TRUE ${type ? 'AND pt.slug=?' : ''} ${country ? 'AND rp.country=?' : ''} ORDER BY rp.company_name`, [type, country].filter(Boolean));
+  const types = await query('SELECT slug, label FROM partner_types ORDER BY label');
+  res.render('partners', { footer: await petConnectFooter(), partners, types, selectedType: type, selectedCountry: country });
+});
+
+app.get('/partner/register', async (req, res) => res.render('partner-register', { footer: await petConnectFooter(), types: await query('SELECT id, label FROM partner_types ORDER BY label'), error: null }));
+
+app.post('/partner/register', async (req, res) => {
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const types = await query('SELECT id FROM partner_types WHERE id=?', [req.body.partner_type_id]);
+  if (!types.length || !email || !req.body.company_name || !req.body.contact_name || !req.body.city) return res.status(400).render('partner-register', { footer: await petConnectFooter(), types: await query('SELECT id, label FROM partner_types ORDER BY label'), error: 'Complete all required fields.' });
+  try {
+    const country = req.body.country === 'CA' ? 'CA' : 'US';
+    const coordinates = await geocodeAddress([req.body.address_line, req.body.city, req.body.state, req.body.postal_code, country]);
+    const token = crypto.randomBytes(32).toString('hex');
+    await query('INSERT INTO rescue_partners (partner_type_id, company_name, contact_name, email, phone, address_line, city, state, postal_code, country, latitude, longitude, website, verify_token) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [req.body.partner_type_id, String(req.body.company_name).trim(), String(req.body.contact_name).trim(), email, String(req.body.phone || '').trim() || null, String(req.body.address_line || '').trim() || null, String(req.body.city).trim(), String(req.body.state || '').trim() || null, String(req.body.postal_code || '').trim() || null, country, coordinates && coordinates.latitude || null, coordinates && coordinates.longitude || null, String(req.body.website || '').trim() || null, token]);
+    await sendEmail(email, 'Verify your PetConnect rescue partner profile', `<p><a href="${process.env.SITE_URL || 'http://localhost:3000'}/partner/claim/${token}">Verify and claim your partner account</a></p>`);
+    res.redirect('/partners');
+  } catch (err) { console.error('[PetConnect partner registration]', err); res.status(400).render('partner-register', { footer: await petConnectFooter(), types: await query('SELECT id, label FROM partner_types ORDER BY label'), error: err.code === 'ER_DUP_ENTRY' ? 'That email is already registered.' : 'Unable to register your organization right now.' }); }
+});
+
+app.get('/partner/claim', async (req, res) => res.render('partner-claim', { footer: await petConnectFooter(), error: null, sent: false }));
+app.get('/partner/login', async (req, res) => res.render('partner-login', { footer: await petConnectFooter(), error: null }));
+app.post('/partner/login', async (req, res) => {
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const password = String(req.body.password || '');
+  const partners = await query('SELECT id, password_hash, is_verified, is_active FROM rescue_partners WHERE email=?', [email]);
+  const partner = partners[0];
+  if (!partner || !partner.password_hash || !await bcrypt.compare(password, partner.password_hash)) return res.status(401).render('partner-login', { footer: await petConnectFooter(), error: 'Invalid email or password.' });
+  if (!partner.is_verified || !partner.is_active) return res.status(403).render('partner-login', { footer: await petConnectFooter(), error: 'This partner account is not currently active.' });
+  req.session.partnerId = partner.id;
+  res.redirect('/partner/dashboard');
+});
+app.post('/partner/claim', async (req, res) => {
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const partners = await query('SELECT verify_token FROM rescue_partners WHERE email=?', [email]);
+  if (partners[0] && partners[0].verify_token) await sendEmail(email, 'Claim your PetConnect partner account', `<p><a href="${process.env.SITE_URL || 'http://localhost:3000'}/partner/claim/${partners[0].verify_token}">Set your password</a></p>`);
+  res.render('partner-claim', { footer: await petConnectFooter(), error: null, sent: true });
+});
+app.get('/partner/claim/:token', async (req, res) => res.render('partner-claim-token', { footer: await petConnectFooter(), token: req.params.token, error: null }));
+app.post('/partner/claim/:token', async (req, res) => {
+  const password = String(req.body.password || '');
+  if (password.length < 8 || password !== String(req.body.confirm_password || '')) return res.status(400).render('partner-claim-token', { footer: await petConnectFooter(), token: req.params.token, error: 'Passwords must match and contain at least 8 characters.' });
+  const partners = await query('SELECT id FROM rescue_partners WHERE verify_token=?', [req.params.token]);
+  if (!partners.length) return res.status(400).render('partner-claim-token', { footer: await petConnectFooter(), token: req.params.token, error: 'This claim link is invalid or expired.' });
+  await query('UPDATE rescue_partners SET password_hash=?, is_verified=TRUE, verify_token=NULL WHERE id=?', [await bcrypt.hash(password, 12), partners[0].id]);
+  req.session.partnerId = partners[0].id;
+  res.redirect('/partner/dashboard');
+});
+app.get('/partner/dashboard', requirePartner, async (req, res) => {
+  const partners = await query('SELECT rp.*, pt.label AS type_label FROM rescue_partners rp JOIN partner_types pt ON pt.id=rp.partner_type_id WHERE rp.id=?', [req.session.partnerId]);
+  const alerts = await query(`SELECT DISTINCT a.*, p.pet_name, p.species FROM alert_notifications n JOIN missing_alerts a ON a.id=n.alert_id JOIN registered_pets p ON p.id=a.pet_id WHERE n.recipient_partner_id=? ORDER BY n.notified_at DESC`, [req.session.partnerId]);
+  res.render('partner-dashboard', { footer: await petConnectFooter(), partner: partners[0], alerts });
+});
+
+app.get('/api/globe/data', async (req, res) => {
+  const scope = String(req.query.scope || 'all');
+  const [alerts, members, partners] = await Promise.all([
+    scope === 'members' || scope === 'partners' ? [] : query(`SELECT a.id, a.last_seen_latitude AS lat, a.last_seen_longitude AS lng, a.alert_type AS type, a.status, p.pet_name AS petName, p.species, a.last_seen_city AS city, a.last_seen_state AS state, a.created_at AS createdAt FROM missing_alerts a JOIN registered_pets p ON p.id=a.pet_id WHERE a.status IN ('active','found') AND a.last_seen_latitude IS NOT NULL AND a.last_seen_longitude IS NOT NULL ORDER BY a.created_at DESC LIMIT 500`),
+    scope === 'alerts' || scope === 'partners' ? [] : query('SELECT id, latitude AS lat, longitude AS lng, city, state FROM members WHERE is_verified=TRUE AND latitude IS NOT NULL AND longitude IS NOT NULL LIMIT 1000'),
+    scope === 'alerts' || scope === 'members' ? [] : query(`SELECT rp.id, rp.latitude AS lat, rp.longitude AS lng, rp.company_name AS name, rp.city, rp.state, pt.slug AS type FROM rescue_partners rp JOIN partner_types pt ON pt.id=rp.partner_type_id WHERE rp.is_active=TRUE AND rp.latitude IS NOT NULL AND rp.longitude IS NOT NULL LIMIT 1000`)
+  ]);
+  res.json({ alerts, members, partners });
+});
+
+// ── Admin API: PetConnect ──────────────────────────────────────────────────
+app.get('/api/admin/petconnect/members', requireAdmin, async (req, res) => {
+  const term = `%${String(req.query.search || '').trim()}%`;
+  const members = await query(`SELECT id, email, first_name, last_name, phone, city, state, country, is_verified, email_alerts, email_alert_radius, created_at FROM members WHERE email LIKE ? OR first_name LIKE ? OR last_name LIKE ? ORDER BY created_at DESC LIMIT 200`, [term, term, term]);
+  res.json({ members });
+});
+
+app.patch('/api/admin/petconnect/members/:id', requireAdmin, async (req, res) => {
+  await query('UPDATE members SET email_alerts=?, email_alert_radius=? WHERE id=?', [req.body.email_alerts ? true : false, Math.max(1, Math.min(1000, Number(req.body.email_alert_radius) || 100)), req.params.id]);
+  res.json({ success: true });
+});
+
+app.get('/api/admin/petconnect/pets', requireAdmin, async (req, res) => {
+  const term = `%${String(req.query.search || '').trim()}%`;
+  const pets = await query(`SELECT p.*, m.email AS member_email, CONCAT(m.first_name, ' ', m.last_name) AS member_name FROM registered_pets p JOIN members m ON m.id=p.member_id WHERE p.pet_name LIKE ? OR p.microchip_number LIKE ? OR m.email LIKE ? ORDER BY p.registered_at DESC LIMIT 200`, [term, term, term]);
+  res.json({ pets });
+});
+
+app.get('/api/admin/petconnect/alerts', requireAdmin, async (req, res) => {
+  const alerts = await query(`SELECT a.*, p.pet_name, p.species, m.email AS member_email FROM missing_alerts a JOIN registered_pets p ON p.id=a.pet_id JOIN members m ON m.id=a.member_id ORDER BY a.created_at DESC LIMIT 300`);
+  res.json({ alerts });
+});
+
+app.patch('/api/admin/petconnect/alerts/:id', requireAdmin, async (req, res) => {
+  const status = ['active', 'found', 'closed'].includes(req.body.status) ? req.body.status : null;
+  if (!status) return res.status(400).json({ error: 'Invalid alert status.' });
+  const alerts = await query('SELECT pet_id FROM missing_alerts WHERE id=?', [req.params.id]);
+  if (!alerts.length) return res.status(404).json({ error: 'Alert not found.' });
+  await query('UPDATE missing_alerts SET status=?, resolved_at=CASE WHEN ?="active" THEN NULL ELSE NOW() END WHERE id=?', [status, status, req.params.id]);
+  await query('UPDATE registered_pets SET is_missing=? WHERE id=?', [status === 'active', alerts[0].pet_id]);
+  res.json({ success: true });
+});
+
+app.delete('/api/admin/petconnect/alerts/:id', requireAdmin, async (req, res) => {
+  await query('DELETE FROM missing_alerts WHERE id=?', [req.params.id]);
+  res.json({ success: true });
+});
+
+app.get('/api/admin/petconnect/partner-types', requireAdmin, async (req, res) => res.json({ types: await query('SELECT id, slug, label FROM partner_types ORDER BY label') }));
+app.get('/api/admin/petconnect/partners', requireAdmin, async (req, res) => {
+  const partners = await query(`SELECT rp.*, pt.label AS type_label FROM rescue_partners rp JOIN partner_types pt ON pt.id=rp.partner_type_id ORDER BY rp.created_at DESC`);
+  res.json({ partners });
+});
+app.post('/api/admin/petconnect/partners', requireAdmin, async (req, res) => {
+  const body = req.body || {};
+  if (!body.partner_type_id || !body.company_name || !body.contact_name || !/^\S+@\S+\.\S+$/.test(String(body.email || '')) || !body.city) return res.status(400).json({ error: 'Type, organization, contact, email, and city are required.' });
+  const country = body.country === 'CA' ? 'CA' : 'US';
+  const coords = await geocodeAddress([body.address_line, body.city, body.state, body.postal_code, country]);
+  const [result] = await pool.execute('INSERT INTO rescue_partners (partner_type_id, company_name, contact_name, email, phone, address_line, city, state, postal_code, country, latitude, longitude, website, is_active, is_verified) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [body.partner_type_id, String(body.company_name).trim(), String(body.contact_name).trim(), String(body.email).trim().toLowerCase(), String(body.phone || '').trim() || null, String(body.address_line || '').trim() || null, String(body.city).trim(), String(body.state || '').trim() || null, String(body.postal_code || '').trim() || null, country, coords && coords.latitude || null, coords && coords.longitude || null, String(body.website || '').trim() || null, body.is_active !== false, true]);
+  res.status(201).json({ success: true, id: result.insertId });
+});
+app.patch('/api/admin/petconnect/partners/:id', requireAdmin, async (req, res) => {
+  const body = req.body || {};
+  await query('UPDATE rescue_partners SET company_name=?, contact_name=?, email=?, phone=?, city=?, state=?, country=?, website=?, partner_type_id=?, is_active=? WHERE id=?', [String(body.company_name || '').trim(), String(body.contact_name || '').trim(), String(body.email || '').trim().toLowerCase(), String(body.phone || '').trim() || null, String(body.city || '').trim(), String(body.state || '').trim() || null, body.country === 'CA' ? 'CA' : 'US', String(body.website || '').trim() || null, body.partner_type_id, body.is_active ? true : false, req.params.id]);
+  res.json({ success: true });
+});
+app.delete('/api/admin/petconnect/partners/:id', requireAdmin, async (req, res) => { await query('DELETE FROM rescue_partners WHERE id=?', [req.params.id]); res.json({ success: true }); });
 
 app.get('/portal/login', (req, res) => {
   if (req.session && req.session.clientAccountId) return res.redirect(req.session.clientMustChangePassword ? '/portal/change-password' : '/portal');

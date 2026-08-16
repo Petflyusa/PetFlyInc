@@ -2,6 +2,7 @@
 <main class="section petconnect-dashboard">
   <div class="container">
     <div class="section-header-public"><div><span class="section-label">PetConnect</span><h1>Welcome, <%= member.first_name %></h1><p>Keep your pet records current so they can be identified quickly.</p></div><form method="post" action="/logout"><button class="btn-outline-public" type="submit">Sign out</button></form></div>
+    <div class="hero-actions"><a class="btn-primary" href="/dashboard/missing/new">Post a lost or found alert</a><a class="btn-outline-public" href="/dashboard/alerts">My alerts</a></div>
     <div class="petconnect-grid">
       <section class="petconnect-panel"><div class="panel-heading"><h2>My Pets</h2></div>
         <% if (!pets.length) { %><p class="empty-state-public">No pets registered yet. Add your first pet below.</p><% } %>
@@ -12,6 +13,7 @@
           </article><% }); %>
         </div>
       </section>
+      <section class="petconnect-panel"><div class="panel-heading"><h2>Alert preferences</h2></div><form method="post" action="/dashboard/preferences" class="auth-form"><label class="checkbox-label"><input type="checkbox" name="email_alerts" <%= member.email_alerts ? 'checked' : '' %>> Receive nearby missing-pet alerts by email</label><label>Alert radius (miles)<input type="number" min="1" max="1000" name="email_alert_radius" value="<%= member.email_alert_radius || 100 %>"></label><button class="btn-outline-public" type="submit">Save preferences</button></form></section>
       <section class="petconnect-panel"><div class="panel-heading"><h2>Register a pet</h2></div>
         <% if (petError) { %><p class="auth-error"><%= petError %></p><% } %>
         <form method="post" action="/api/petconnect/pets" enctype="multipart/form-data" class="auth-form">

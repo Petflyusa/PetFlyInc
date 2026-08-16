@@ -845,6 +845,24 @@ ol.req-list { counter-reset: item; }
 }
 .note { font-size: 0.875rem !important; color: var(--warm-gray-300) !important; margin-top: 0.75rem; font-style: italic; }
 
+/* PetConnect alerts and partner directory */
+.petconnect-map-section { background: #f1f5f3; }
+.petconnect-globe { width: 100%; min-height: 300px; overflow: hidden; background: #0d1f2b; border-radius: 6px; cursor: grab; }
+.petconnect-globe canvas { display: block; width: 100%; }
+.petconnect-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; gap: 0.75rem; margin-bottom: 2rem; }
+.petconnect-filters select { width: 100%; }
+.alert-grid, .partner-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.alert-card, .partner-card { display: grid; gap: 0.9rem; color: var(--charcoal); border: 1px solid rgba(31, 44, 47, 0.12); padding: 1rem; border-radius: 6px; background: #fff; }
+.alert-card:hover { border-color: var(--accent); }
+.alert-card img { width: 100%; height: 170px; object-fit: cover; border-radius: 3px; }
+.alert-card h3, .partner-card h2 { margin: 0; font-size: 1.2rem; }
+.alert-card p, .partner-card p { margin: 0; }
+.alert-badge { display: inline-block; padding: 0.2rem 0.55rem; border-radius: 3px; background: #e8ece8; color: var(--charcoal); font-size: 0.72rem; text-transform: uppercase; }
+.alert-badge.lost { background: #fae5df; color: #a83d2c; }.alert-badge.found { background: #deefe5; color: #22623b; }
+.pagination { display: flex; gap: 0.4rem; margin-top: 1.5rem; }.pagination a { padding: 0.45rem 0.7rem; border: 1px solid #d6d9d3; color: var(--charcoal); }.pagination a.active { background: var(--charcoal); color: #fff; }
+.alert-detail-grid { display: grid; grid-template-columns: minmax(220px, 0.7fr) 1fr; gap: 2rem; }.alert-detail-grid > img { width: 100%; max-height: 360px; object-fit: cover; border-radius: 4px; }.alert-detail-grid dl { display: grid; grid-template-columns: 120px 1fr; gap: 0.6rem 1rem; }.alert-detail-grid dt { font-weight: 600; }.alert-detail-grid dd { margin: 0; }
+@media (max-width: 760px) { .petconnect-filters, .alert-grid, .partner-grid, .alert-detail-grid { grid-template-columns: 1fr; } }
+
 /* ── Footer ── */
 footer {
   background: var(--charcoal);

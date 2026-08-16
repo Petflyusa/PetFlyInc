@@ -40,6 +40,9 @@
       <button class="nav-btn" data-section="contracts" onclick="showSection('contracts')">
         <i class="fas fa-file-signature"></i> Contracts
       </button>
+      <button class="nav-btn" data-section="petconnect" onclick="showSection('petconnect')">
+        <i class="fas fa-paw"></i> PetConnect
+      </button>
       <button class="nav-btn" data-section="content" onclick="showSection('content')">
         <i class="fas fa-edit"></i> Landing Content
       </button>
@@ -128,6 +131,14 @@
         <button class="btn-primary-sm" onclick="newContract()"><i class="fas fa-plus"></i> New Contract</button>
       </div>
       <div id="contractsTable"></div>
+    </section>
+
+    <section id="section-petconnect" class="admin-section">
+      <div class="section-header"><h1>PetConnect</h1><button class="btn-primary-sm" onclick="newPetConnectPartner()"><i class="fas fa-plus"></i> Add Partner</button></div>
+      <div class="recent-section"><h2>Members</h2><div id="petconnectMembers"></div></div>
+      <div class="recent-section"><h2>Registered Pets</h2><div id="petconnectPets"></div></div>
+      <div class="recent-section"><h2>Missing-Pet Alerts</h2><div id="petconnectAlerts"></div></div>
+      <div class="recent-section"><h2>Rescue Partners</h2><div id="petconnectPartners"></div></div>
     </section>
 
     <!-- Landing Content -->
