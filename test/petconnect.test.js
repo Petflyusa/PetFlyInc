@@ -28,6 +28,7 @@ test('PetConnect exposes member authentication and pet routes', () => {
   assert.match(server, /app\.post\('\/resend-verification'/);
   assert.match(server, /connectionTimeout: 10000/);
   assert.match(server, /function getSiteUrl\(\)/);
+  assert.match(server, /NODE_ENV === 'production' && isLocalUrl/);
   assert.match(server, /microchip_number/);
   assert.match(registerView, /name="email"/);
   assert.match(dashboardView, /name="microchip_number"/);

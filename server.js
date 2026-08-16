@@ -22,7 +22,10 @@ const { defaultFooter } = require('./lib/site');
 const app = express();
 const PORT = process.env.PORT || 3000;
 function getSiteUrl() {
-  return String(process.env.SITE_URL || '').trim().replace(/\/$/, '') || (process.env.NODE_ENV === 'production' ? 'https://petflyinc.com' : 'http://localhost:3000');
+  const configured = String(process.env.SITE_URL || '').trim().replace(/\/$/, '');
+  const isLocalUrl = /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?$/i.test(configured);
+  if (process.env.NODE_ENV === 'production' && isLocalUrl) return 'https://petflyinc.com';
+  return configured || (process.env.NODE_ENV === 'production' ? 'https://petflyinc.com' : 'http://localhost:3000');
 }
 
 // ── Email Transporter ───────────────────────────────────────────────────────
