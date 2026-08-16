@@ -18,9 +18,20 @@ const { ensurePetConnectSchema } = require('./lib/petconnect-database');
 const { generateContractPdf } = require('./lib/contract-pdf');
 const { documentCategories, documentExpiryStatus, isActiveRelocation, normalizeYouTubeUrl, relocationSteps } = require('./lib/portal');
 const { defaultFooter } = require('./lib/site');
+const { ensureUploadStorage, resolveUploadStorage, uploadFilePath } = require('./lib/uploads');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const uploadStorage = resolveUploadStorage({
+  appDir: __dirname,
+  configuredDir: process.env.UPLOAD_DIR,
+  nodeEnv: process.env.NODE_ENV
+});
+if (uploadStorage.usingProductionFallback) {
+  console.warn('[Uploads] UPLOAD_DIR is missing or inside the deployment folder. Using persistent storage:', uploadStorage.uploadDir);
+}
+ensureUploadStorage(uploadStorage);
+const uploadDir = uploadStorage.uploadDir;
 function getSiteUrl() {
   const configured = String(process.env.SITE_URL || '').trim().replace(/\/$/, '');
   const isLocalUrl = /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?$/i.test(configured);
@@ -126,6 +137,7 @@ app.use(helmet({
 app.use(compression());
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+app.use('/uploads', express.static(uploadDir));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/admin', express.static(path.join(__dirname, 'admin')));
 
@@ -145,12 +157,6 @@ app.use(session({
 }));
 
 // ── File Upload ─────────────────────────────────────────────────────────────
-const uploadDir = process.env.UPLOAD_DIR
-  ? path.resolve(process.env.UPLOAD_DIR)
-  : path.join(__dirname, 'public/uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-app.use('/uploads', express.static(uploadDir));
-
 const upload = multerModule({
   storage: multerModule.diskStorage({
     destination: (req, file, cb) => cb(null, uploadDir),
@@ -547,7 +553,8 @@ app.post('/api/petconnect/pets', requireMember, (req, res, next) => {
 app.post('/api/petconnect/pets/:id/delete', requireMember, async (req, res) => {
   try {
     const pets = await query('SELECT photo_filename FROM registered_pets WHERE id=? AND member_id=?', [req.params.id, req.session.memberId]);
-    if (pets[0] && pets[0].photo_filename) fs.unlink(path.join(__dirname, 'public', pets[0].photo_filename), () => {});
+    const photoPath = pets[0] && uploadFilePath(uploadDir, pets[0].photo_filename);
+    if (photoPath) fs.unlink(photoPath, () => {});
     await query('DELETE FROM registered_pets WHERE id=? AND member_id=?', [req.params.id, req.session.memberId]);
     res.redirect('/dashboard');
   } catch (err) { console.error('[PetConnect pet deletion]', err); res.redirect('/dashboard?pet_error=Unable to delete this pet right now.'); }
