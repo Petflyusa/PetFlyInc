@@ -1062,13 +1062,13 @@ app.get('/admin/me', (req, res) => {
 });
 
 app.get('/api/admin/email-health', requireAdmin, async (req, res) => {
-  if (!smtpConfig.auth.pass) return res.status(503).json({ success: false, error: 'SMTP password is not configured.' });
+  if (!smtpConfig.auth.pass) return res.json({ success: false, error: 'SMTP password is not configured.' });
   try {
     await mailTransporter.verify();
     res.json({ success: true, message: 'SMTP connection and authentication succeeded.' });
   } catch (err) {
     console.error('[Email health]', err.message);
-    res.status(503).json({ success: false, error: err.code || 'SMTP_CONNECTION_FAILED' });
+    res.json({ success: false, error: err.code || 'SMTP_CONNECTION_FAILED' });
   }
 });
 

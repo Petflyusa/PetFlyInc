@@ -77,4 +77,5 @@ test('admin can diagnose and send a bounded SMTP delivery test', () => {
   assert.match(server, /app\.post\('\/api\/admin\/email-test'/);
   assert.match(server, /mailTransporter\.verify\(\)/);
   assert.match(admin, /testEmailDelivery/);
+  assert.match(admin, /emailHealthStatus/);
 });
