@@ -26,7 +26,10 @@ const PORT = process.env.PORT || 3000;
 const smtpConfig = {
   host: process.env.SMTP_HOST || 'smtp.hostinger.com',
   port: parseInt(process.env.SMTP_PORT) || 465,
-  secure: true,
+  secure: (process.env.SMTP_SECURE || 'true') !== 'false',
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 20000,
   auth: {
     user: process.env.SMTP_USER || 'info@petflyinc.com',
     pass: process.env.SMTP_PASS || '',
@@ -53,6 +56,11 @@ async function sendEmail(to, subject, htmlContent, attachments = []) {
     console.error('[Email] Failed to send:', err.message);
     return false;
   }
+}
+
+async function sendPetConnectVerificationEmail(email, token) {
+  const verifyUrl = `${process.env.SITE_URL || 'http://localhost:3000'}/verify/${token}`;
+  return sendEmail(email, 'Verify your PetConnect account', `<p>Welcome to PetConnect.</p><p><a href="${verifyUrl}">Verify your email address</a> to activate your account.</p>`);
 }
 
 // ── View engine ─────────────────────────────────────────────────────────────
@@ -367,9 +375,8 @@ app.post('/register', async (req, res) => {
     const postalCode = String(req.body.postal_code || '').trim() || null;
     const coordinates = await geocodeAddress([city, state, postalCode, country]);
     await query('INSERT INTO members (email, password_hash, first_name, last_name, phone, city, state, country, postal_code, latitude, longitude, verify_token, verify_token_expires_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,DATE_ADD(NOW(), INTERVAL 48 HOUR))', [email, hash, firstName, lastName, String(req.body.phone || '').trim() || null, city, state, country, postalCode, coordinates && coordinates.latitude || null, coordinates && coordinates.longitude || null, token]);
-    const verifyUrl = `${process.env.SITE_URL || 'http://localhost:3000'}/verify/${token}`;
-    await sendEmail(email, 'Verify your PetConnect account', `<p>Welcome to PetConnect.</p><p><a href="${verifyUrl}">Verify your email address</a> to activate your account.</p>`);
-    res.render('login', { footer: await getFooter(), error: 'Account created. Check your email to verify your account before signing in.' });
+    const sent = await sendPetConnectVerificationEmail(email, token);
+    res.render('login', { footer: await getFooter(), error: sent ? 'Account created. Check your email to verify your account before signing in.' : 'Account created, but the verification email could not be delivered. Use the resend form below or contact Pet Fly Inc.' });
   } catch (err) {
     const message = err && err.code === 'ER_DUP_ENTRY' ? 'That email is already registered.' : 'Unable to create your account right now.';
     console.error('[PetConnect registration]', err);
@@ -387,6 +394,21 @@ app.get('/verify/:token', async (req, res) => {
 
 app.get('/login', async (req, res) => {
   res.render('login', { footer: await getFooter(), error: req.query.verified ? 'Email verified. You can now sign in.' : null });
+});
+
+app.post('/resend-verification', async (req, res) => {
+  const email = String(req.body.email || '').trim().toLowerCase();
+  if (/^\S+@\S+\.\S+$/.test(email)) {
+    try {
+      const members = await query('SELECT id, is_verified FROM members WHERE email=?', [email]);
+      if (members[0] && !members[0].is_verified) {
+        const token = crypto.randomBytes(32).toString('hex');
+        await query('UPDATE members SET verify_token=?, verify_token_expires_at=DATE_ADD(NOW(), INTERVAL 48 HOUR) WHERE id=?', [token, members[0].id]);
+        await sendPetConnectVerificationEmail(email, token);
+      }
+    } catch (err) { console.error('[PetConnect verification resend]', err); }
+  }
+  res.render('login', { footer: await getFooter(), error: 'If an unverified PetConnect account matches that address, a new verification link has been sent.' });
 });
 
 app.post('/login', async (req, res) => {

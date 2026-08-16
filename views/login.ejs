@@ -9,6 +9,10 @@
       <label>Password<input type="password" name="password" autocomplete="current-password" required></label>
       <button class="btn-primary" type="submit">Sign in</button>
     </form>
+    <form method="post" action="/resend-verification" class="auth-form" style="margin-top:1.25rem;border-top:1px solid var(--border);padding-top:1.25rem;">
+      <label>Need another verification email?<input type="email" name="email" placeholder="Email address" required></label>
+      <button class="btn-outline-public" type="submit">Resend verification link</button>
+    </form>
     <p class="auth-footer">New to PetConnect? <a href="/register">Create an account</a></p>
   </section>
 </main>
