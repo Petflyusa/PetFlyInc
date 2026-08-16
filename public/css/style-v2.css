@@ -209,6 +209,46 @@ button { cursor: pointer; font-family: inherit; }
 }
 .mobile-services-submenu { padding-left: calc(var(--container-pad) + 1.25rem) !important; font-size: 0.9375rem !important; }
 
+/* ── PetConnect ── */
+.auth-shell { min-height: 70vh; display: flex; align-items: center; justify-content: center; padding: 8rem var(--container-pad) 4rem; background: var(--cream); }
+.auth-card { width: min(100%, 600px); background: #fff; border: 1px solid var(--warm-gray-100); padding: var(--space-xl); }
+.auth-card h1 { font-family: var(--font-serif); font-size: clamp(2rem, 4vw, 3rem); font-weight: 400; line-height: 1.1; margin-bottom: 0.75rem; }
+.auth-intro, .auth-footer { color: var(--text-muted); margin-bottom: var(--space-lg); }
+.auth-form { display: flex; flex-direction: column; gap: var(--space-md); }
+.auth-form label { display: flex; flex-direction: column; gap: 0.375rem; color: var(--text-muted); font-size: 0.75rem; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; }
+.auth-form label span { font-weight: 400; letter-spacing: 0; text-transform: none; }
+.auth-form input, .auth-form select, .auth-form textarea { width: 100%; border: 1px solid var(--warm-gray-200); background: var(--cream); color: var(--charcoal); padding: 0.7rem 0.8rem; font: inherit; font-size: 0.9375rem; text-transform: none; letter-spacing: 0; }
+.auth-form input:focus, .auth-form select:focus, .auth-form textarea:focus { outline: none; border-color: var(--accent); }
+.checkbox-label { flex-direction: row !important; align-items: center; gap: 0.5rem !important; text-transform: none !important; letter-spacing: 0 !important; font-size: 0.875rem !important; font-weight: 400 !important; }
+.checkbox-label input { width: auto; }
+.auth-error { padding: 0.75rem 1rem; background: rgba(220,64,64,0.08); border-left: 2px solid #dc4040; color: #a52b2b; margin-bottom: var(--space-md); }
+.auth-footer a { color: var(--accent); text-decoration: underline; }
+.petconnect-hero { min-height: 480px; }
+.petconnect-hero .btn-primary { width: auto; background: var(--accent); color: #fff; }
+.petconnect-hero .btn-outline-public { border-color: rgba(247,245,240,0.7); color: var(--cream); }
+.hero-actions { display: flex; gap: 0.75rem; margin-top: var(--space-lg); flex-wrap: wrap; }
+.btn-outline-public { display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--charcoal); color: var(--charcoal); padding: 0.8rem 1.25rem; font-size: 0.875rem; }
+.section-header-public { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-md); margin-bottom: var(--space-xl); }
+.section-header-public h1 { font-family: var(--font-serif); font-size: clamp(2rem, 4vw, 3rem); font-weight: 400; }
+.petconnect-grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: var(--space-xl); align-items: start; }
+.petconnect-panel { background: #fff; border: 1px solid var(--warm-gray-100); padding: var(--space-lg); }
+.panel-heading { border-bottom: 1px solid var(--warm-gray-100); margin-bottom: var(--space-md); padding-bottom: 0.75rem; }
+.panel-heading h2 { font-family: var(--font-serif); font-size: 1.5rem; font-weight: 400; }
+.pet-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-md); }
+.pet-card { border: 1px solid var(--warm-gray-100); background: var(--cream); }
+.pet-card img, .pet-photo-placeholder { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+.pet-photo-placeholder { display: flex; align-items: center; justify-content: center; background: rgba(196,98,45,0.08); color: var(--accent); font-size: 2rem; }
+.pet-card-body { padding: var(--space-md); }
+.pet-card-body h3 { font-family: var(--font-serif); font-size: 1.25rem; font-weight: 400; }
+.pet-card-body p { color: var(--text-muted); font-size: 0.875rem; }
+.pet-meta { margin: 0.5rem 0; font-size: 0.75rem !important; }
+.btn-danger-public { border: 1px solid #dc4040; color: #a52b2b; background: transparent; padding: 0.4rem 0.75rem; font-size: 0.75rem; }
+.empty-state-public { text-align: center; color: var(--text-muted); padding: var(--space-xl); }
+.empty-state-public i { color: var(--accent); font-size: 2rem; margin-bottom: var(--space-sm); }
+.empty-state-public h2 { font-family: var(--font-serif); font-weight: 400; color: var(--charcoal); margin-bottom: 0.5rem; }
+@media (max-width: 900px) { .petconnect-grid { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .auth-card { padding: var(--space-lg); } .section-header-public { flex-direction: column; } }
+
 /* ── Hero ── */
 .hero {
   position: relative;

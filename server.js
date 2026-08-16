@@ -10,9 +10,11 @@ const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const mysql = require('mysql2/promise');
 const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 const { blankContractData, createContractNumber, canEditContract, mergeClientContractData, normalizeContractData } = require('./lib/contracts');
 const { ensureContractSchema, sendContractDatabaseError } = require('./lib/contract-database');
 const { ensureQuoteSchema } = require('./lib/quote-database');
+const { ensurePetConnectSchema } = require('./lib/petconnect-database');
 const { generateContractPdf } = require('./lib/contract-pdf');
 const { documentCategories, documentExpiryStatus, isActiveRelocation, normalizeYouTubeUrl, relocationSteps } = require('./lib/portal');
 const { defaultFooter } = require('./lib/site');
@@ -71,7 +73,7 @@ const pool = mysql.createPool({
 
 // Existing databases predate the contracts table. Apply the additive migration
 // at startup so contract issuance is available immediately after a restart.
-Promise.all([ensureContractSchema(pool), ensureQuoteSchema(pool)]).then(() => {
+Promise.all([ensureContractSchema(pool), ensureQuoteSchema(pool), ensurePetConnectSchema(pool)]).then(() => {
   console.log('[Contract database] Schema ready');
 }).catch(err => {
   console.error('[Contract database] Schema setup failed:', err.message);
@@ -171,6 +173,17 @@ const relocationDocumentUpload = multerModule({
   fileFilter: (req, file, cb) => cb(null, ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype))
 });
 
+const petUploadDir = path.join(uploadDir, 'pets');
+if (!fs.existsSync(petUploadDir)) fs.mkdirSync(petUploadDir, { recursive: true });
+const petUpload = multerModule({
+  storage: multerModule.diskStorage({
+    destination: petUploadDir,
+    filename: (req, file, cb) => cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${path.extname(file.originalname).toLowerCase()}`)
+  }),
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => cb(null, ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.mimetype))
+});
+
 // ── Auth Middleware ─────────────────────────────────────────────────────────
 function requireAdmin(req, res, next) {
   if (req.session && req.session.adminId) return next();
@@ -182,6 +195,12 @@ function requirePortalAccount(req, res, next) {
   if (req.session && req.session.clientAccountId) return next();
   if (req.path.startsWith('/api/')) return res.status(401).json({ error: 'Please sign in to view your relocation portal.' });
   return res.redirect('/portal/login');
+}
+
+function requireMember(req, res, next) {
+  if (req.session && req.session.memberId) return next();
+  if (req.path.startsWith('/api/')) return res.status(401).json({ error: 'Please sign in to access PetConnect.' });
+  return res.redirect('/login?next=' + encodeURIComponent(req.originalUrl));
 }
 
 // ── Landing Content Helpers ─────────────────────────────────────────────────
@@ -271,6 +290,111 @@ app.get('/contract', async (req, res) => {
     footer = defaultFooter();
   }
   res.render('contract', { footer });
+});
+
+// ── PetConnect Member Routes ─────────────────────────────────────────────
+app.get('/registry', async (req, res) => {
+  res.render('registry', { footer: await getFooter() });
+});
+
+app.get('/register', async (req, res) => {
+  res.render('register', { footer: await getFooter(), error: null });
+});
+
+app.post('/register', async (req, res) => {
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const firstName = String(req.body.first_name || '').trim();
+  const lastName = String(req.body.last_name || '').trim();
+  const password = String(req.body.password || '');
+  const country = req.body.country === 'CA' ? 'CA' : 'US';
+  if (!firstName || !lastName || !/^\S+@\S+\.\S+$/.test(email)) return res.status(400).render('register', { footer: await getFooter(), error: 'Enter your name and a valid email address.' });
+  if (password.length < 8 || password !== String(req.body.confirm_password || '')) return res.status(400).render('register', { footer: await getFooter(), error: 'Passwords must match and contain at least 8 characters.' });
+  if (!req.body.terms) return res.status(400).render('register', { footer: await getFooter(), error: 'Please accept the PetConnect terms to continue.' });
+  try {
+    const token = crypto.randomBytes(32).toString('hex');
+    const hash = await bcrypt.hash(password, 12);
+    await query('INSERT INTO members (email, password_hash, first_name, last_name, phone, city, state, country, postal_code, verify_token) VALUES (?,?,?,?,?,?,?,?,?,?)', [email, hash, firstName, lastName, String(req.body.phone || '').trim() || null, String(req.body.city || '').trim() || null, String(req.body.state || '').trim() || null, country, String(req.body.postal_code || '').trim() || null, token]);
+    const verifyUrl = `${process.env.SITE_URL || 'http://localhost:3000'}/verify/${token}`;
+    await sendEmail(email, 'Verify your PetConnect account', `<p>Welcome to PetConnect.</p><p><a href="${verifyUrl}">Verify your email address</a> to activate your account.</p>`);
+    res.render('login', { footer: await getFooter(), error: 'Account created. Check your email to verify your account before signing in.' });
+  } catch (err) {
+    const message = err && err.code === 'ER_DUP_ENTRY' ? 'That email is already registered.' : 'Unable to create your account right now.';
+    console.error('[PetConnect registration]', err);
+    res.status(400).render('register', { footer: await getFooter(), error: message });
+  }
+});
+
+app.get('/verify/:token', async (req, res) => {
+  try {
+    const result = await query('UPDATE members SET is_verified=TRUE, verify_token=NULL WHERE verify_token=?', [req.params.token]);
+    if (!result.affectedRows) return res.status(400).send('This verification link is invalid or has already been used.');
+    res.redirect('/login?verified=1');
+  } catch (err) { console.error('[PetConnect verification]', err); res.status(500).send('Unable to verify this account right now.'); }
+});
+
+app.get('/login', async (req, res) => {
+  res.render('login', { footer: await getFooter(), error: req.query.verified ? 'Email verified. You can now sign in.' : null });
+});
+
+app.post('/login', async (req, res) => {
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const password = String(req.body.password || '');
+  try {
+    const rows = await query('SELECT id, email, password_hash, is_verified FROM members WHERE email=?', [email]);
+    const member = rows[0];
+    if (!member || !await bcrypt.compare(password, member.password_hash)) return res.status(401).render('login', { footer: await getFooter(), error: 'Invalid email or password.' });
+    if (!member.is_verified) return res.status(403).render('login', { footer: await getFooter(), error: 'Please verify your email before signing in.' });
+    req.session.memberId = member.id;
+    req.session.memberEmail = member.email;
+    res.redirect(req.body.next || '/dashboard');
+  } catch (err) { console.error('[PetConnect login]', err); res.status(500).render('login', { footer: await getFooter(), error: 'Unable to sign in right now.' }); }
+});
+
+app.post('/logout', requireMember, (req, res) => {
+  delete req.session.memberId;
+  delete req.session.memberEmail;
+  res.redirect('/login');
+});
+
+app.get('/dashboard', requireMember, async (req, res) => {
+  try {
+    const members = await query('SELECT id, first_name, last_name, email FROM members WHERE id=?', [req.session.memberId]);
+    if (!members.length) return res.redirect('/login');
+    const pets = await query('SELECT id, pet_name, microchip_number, species, breed, color, gender, birth_date, photo_filename, notes, is_missing FROM registered_pets WHERE member_id=? ORDER BY registered_at DESC', [req.session.memberId]);
+    res.render('petconnect-dashboard', { footer: await getFooter(), member: members[0], pets, petError: req.query.pet_error || null });
+  } catch (err) { console.error('[PetConnect dashboard]', err); res.status(500).send('Unable to load your PetConnect dashboard right now.'); }
+});
+
+app.post('/api/petconnect/pets', requireMember, (req, res, next) => {
+  petUpload.single('photos')(req, res, err => {
+    if (err) return res.redirect('/dashboard?pet_error=' + encodeURIComponent(err.code === 'LIMIT_FILE_SIZE' ? 'Pet photos must be 2 MB or smaller.' : 'Use a JPG, PNG, WebP, or GIF pet photo.'));
+    next();
+  });
+}, async (req, res) => {
+  const petName = String(req.body.pet_name || '').trim();
+  const species = String(req.body.species || 'Dog');
+  const gender = String(req.body.gender || 'Unknown');
+  const microchip = String(req.body.microchip_number || '').replace(/[ -]/g, '');
+  if (!petName || !['Dog', 'Cat', 'Bird', 'Other'].includes(species) || !['Male', 'Female', 'Unknown'].includes(gender)) return res.redirect('/dashboard?pet_error=Enter a valid pet name, species, and gender.');
+  if (microchip && !/^\d{9,15}$/.test(microchip)) return res.redirect('/dashboard?pet_error=Microchip numbers must contain 9 to 15 digits.');
+  try {
+    const photoFilename = req.file ? `/uploads/pets/${req.file.filename}` : null;
+    await query('INSERT INTO registered_pets (member_id, microchip_number, pet_name, species, breed, color, gender, birth_date, photo_filename, notes) VALUES (?,?,?,?,?,?,?,?,?,?)', [req.session.memberId, microchip || null, petName, species, String(req.body.breed || '').trim() || null, String(req.body.color || '').trim() || null, gender, req.body.birth_date || null, photoFilename, String(req.body.notes || '').trim() || null]);
+    res.redirect('/dashboard');
+  } catch (err) {
+    if (req.file) fs.unlink(req.file.path, () => {});
+    console.error('[PetConnect pet registration]', err);
+    res.redirect('/dashboard?pet_error=' + encodeURIComponent(err.code === 'ER_DUP_ENTRY' ? 'That microchip number is already registered.' : 'Unable to save this pet right now.'));
+  }
+});
+
+app.post('/api/petconnect/pets/:id/delete', requireMember, async (req, res) => {
+  try {
+    const pets = await query('SELECT photo_filename FROM registered_pets WHERE id=? AND member_id=?', [req.params.id, req.session.memberId]);
+    if (pets[0] && pets[0].photo_filename) fs.unlink(path.join(__dirname, 'public', pets[0].photo_filename), () => {});
+    await query('DELETE FROM registered_pets WHERE id=? AND member_id=?', [req.params.id, req.session.memberId]);
+    res.redirect('/dashboard');
+  } catch (err) { console.error('[PetConnect pet deletion]', err); res.redirect('/dashboard?pet_error=Unable to delete this pet right now.'); }
 });
 
 app.get('/portal/login', (req, res) => {

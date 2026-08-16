@@ -1,0 +1,15 @@
+<%- include('partials/header', { currentPage: 'login' }) %>
+<main class="auth-shell">
+  <section class="auth-card">
+    <span class="section-label">PetConnect</span>
+    <h1>Member sign in</h1>
+    <% if (error) { %><p class="auth-error"><%= error %></p><% } %>
+    <form method="post" action="/login" class="auth-form">
+      <label>Email<input type="email" name="email" autocomplete="email" required></label>
+      <label>Password<input type="password" name="password" autocomplete="current-password" required></label>
+      <button class="btn-primary" type="submit">Sign in</button>
+    </form>
+    <p class="auth-footer">New to PetConnect? <a href="/register">Create an account</a></p>
+  </section>
+</main>
+<%- include('partials/footer') %>

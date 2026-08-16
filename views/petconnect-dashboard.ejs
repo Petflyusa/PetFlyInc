@@ -1,0 +1,30 @@
+<%- include('partials/header', { currentPage: 'dashboard' }) %>
+<main class="section petconnect-dashboard">
+  <div class="container">
+    <div class="section-header-public"><div><span class="section-label">PetConnect</span><h1>Welcome, <%= member.first_name %></h1><p>Keep your pet records current so they can be identified quickly.</p></div><form method="post" action="/logout"><button class="btn-outline-public" type="submit">Sign out</button></form></div>
+    <div class="petconnect-grid">
+      <section class="petconnect-panel"><div class="panel-heading"><h2>My Pets</h2></div>
+        <% if (!pets.length) { %><p class="empty-state-public">No pets registered yet. Add your first pet below.</p><% } %>
+        <div class="pet-cards">
+          <% pets.forEach(function(pet) { %><article class="pet-card">
+            <% if (pet.photo_filename) { %><img src="<%= pet.photo_filename %>" alt="<%= pet.pet_name %>"><% } else { %><div class="pet-photo-placeholder"><i class="fas fa-paw"></i></div><% } %>
+            <div class="pet-card-body"><h3><%= pet.pet_name %></h3><p><%= pet.species %><%= pet.breed ? ' · ' + pet.breed : '' %></p><p class="pet-meta">Microchip: <%= pet.microchip_number || 'Not provided' %></p><form method="post" action="/api/petconnect/pets/<%= pet.id %>/delete"><button class="btn-danger-public" type="submit">Delete</button></form></div>
+          </article><% }); %>
+        </div>
+      </section>
+      <section class="petconnect-panel"><div class="panel-heading"><h2>Register a pet</h2></div>
+        <% if (petError) { %><p class="auth-error"><%= petError %></p><% } %>
+        <form method="post" action="/api/petconnect/pets" enctype="multipart/form-data" class="auth-form">
+          <label>Pet name<input name="pet_name" required></label>
+          <label>Microchip number <span>(ISO / AVID, optional)</span><input name="microchip_number" inputmode="numeric" pattern="[0-9 -]{9,20}" placeholder="9 to 15 digits"></label>
+          <div class="form-grid"><label>Species<select name="species"><option>Dog</option><option>Cat</option><option>Bird</option><option>Other</option></select></label><label>Gender<select name="gender"><option>Unknown</option><option>Male</option><option>Female</option></select></label></div>
+          <div class="form-grid"><label>Breed<input name="breed"></label><label>Color<input name="color"></label></div>
+          <div class="form-grid"><label>Birth date<input type="date" name="birth_date"></label><label>Photo<input type="file" name="photos" accept="image/jpeg,image/png,image/webp,image/gif"></label></div>
+          <label>Notes<textarea name="notes" rows="4"></textarea></label>
+          <button class="btn-primary" type="submit">Save pet</button>
+        </form>
+      </section>
+    </div>
+  </div>
+</main>
+<%- include('partials/footer') %>

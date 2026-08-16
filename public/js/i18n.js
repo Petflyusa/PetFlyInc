@@ -17,6 +17,7 @@
     en: {
       'nav.home': 'Home',
       'nav.services': 'Services',
+      'nav.petconnect': 'PetConnect',
       'nav.contract': 'Contract',
       'nav.quote': 'Quote',
       'nav.regulations': 'Regulations',
@@ -31,6 +32,7 @@
     es: {
       'nav.home': 'Inicio',
       'nav.services': 'Servicios',
+      'nav.petconnect': 'PetConnect',
       'nav.contract': 'Contrato',
       'nav.quote': 'Cotizacion',
       'nav.regulations': 'Regulaciones',
@@ -45,6 +47,7 @@
     zh: {
       'nav.home': '首页',
       'nav.services': '服务',
+      'nav.petconnect': 'PetConnect',
       'nav.contract': '合同',
       'nav.quote': '报价',
       'nav.regulations': '法规',
