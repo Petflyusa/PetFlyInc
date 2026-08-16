@@ -49,6 +49,14 @@ Display organization, type, location, verification, and active status. Server-si
 
 The overview receives a protected summary endpoint returning totals only. Each workspace requests its own protected endpoint with search and filter query parameters. The admin client refreshes only the active workspace after an edit or deletion.
 
+## Complete Address Capture
+
+PetConnect member and organization location forms will collect a complete geographic address: street address, city, state or province, postal code, and country. This applies to public member registration, public organization registration, and the corresponding Admin create and edit forms.
+
+Member records will gain a street-address field. The address is geocoded when a member is registered or when an administrator changes location details, storing updated latitude and longitude for alert-radius matching. Organization forms will expose their already-supported street address and postal code fields in the Admin interface and likewise refresh coordinates after location changes.
+
+Pet records and finder contact forms do not collect an address because they do not establish a searchable member or partner location.
+
 ## Error Handling and Testing
 
 Empty filter results show an explicit empty state. API failures show the existing admin toast error. Tests verify the dashboard navigation, summary API, server-side filter parameters, separate render targets, and retained management controls.
