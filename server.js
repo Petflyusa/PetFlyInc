@@ -36,10 +36,12 @@ const smtpConfig = {
   },
 };
 const mailTransporter = nodemailer.createTransport(smtpConfig);
+let lastEmailDeliveryError = null;
 
 async function sendEmail(to, subject, htmlContent, attachments = []) {
   if (!smtpConfig.auth.pass) {
     console.warn('[Email] SMTP_PASS not set, skipping email send to', to);
+    lastEmailDeliveryError = 'SMTP password is not configured.';
     return false;
   }
   try {
@@ -51,9 +53,11 @@ async function sendEmail(to, subject, htmlContent, attachments = []) {
       attachments,
     });
     console.log('[Email] Sent to', to);
+    lastEmailDeliveryError = null;
     return true;
   } catch (err) {
     console.error('[Email] Failed to send:', err.message);
+    lastEmailDeliveryError = err.code || 'SMTP_SEND_FAILED';
     return false;
   }
 }
@@ -1055,6 +1059,25 @@ app.post('/admin/logout', (req, res) => {
 
 app.get('/admin/me', (req, res) => {
   res.json({ loggedIn: !!(req.session && req.session.adminId) });
+});
+
+app.get('/api/admin/email-health', requireAdmin, async (req, res) => {
+  if (!smtpConfig.auth.pass) return res.status(503).json({ success: false, error: 'SMTP password is not configured.' });
+  try {
+    await mailTransporter.verify();
+    res.json({ success: true, message: 'SMTP connection and authentication succeeded.' });
+  } catch (err) {
+    console.error('[Email health]', err.message);
+    res.status(503).json({ success: false, error: err.code || 'SMTP_CONNECTION_FAILED' });
+  }
+});
+
+app.post('/api/admin/email-test', requireAdmin, async (req, res) => {
+  const email = String(req.body.email || '').trim().toLowerCase();
+  if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ success: false, error: 'Enter a valid recipient email.' });
+  const sent = await sendEmail(email, 'Pet Fly Inc email delivery test', '<p>This confirms that Pet Fly Inc can send email from its current SMTP configuration.</p>');
+  if (!sent) return res.status(503).json({ success: false, error: lastEmailDeliveryError || 'SMTP_SEND_FAILED' });
+  res.json({ success: true, message: 'Test email sent.' });
 });
 
 // Admin SPA

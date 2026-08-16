@@ -68,3 +68,13 @@ test('PetConnect completes public alerts, member locations, and administrator ma
   assert.match(registry, /petconnect-globe/);
   assert.match(admin, /PetConnect/);
 });
+
+test('admin can diagnose and send a bounded SMTP delivery test', () => {
+  const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  const admin = fs.readFileSync(path.join(__dirname, '..', 'admin', 'app.js'), 'utf8');
+
+  assert.match(server, /app\.get\('\/api\/admin\/email-health'/);
+  assert.match(server, /app\.post\('\/api\/admin\/email-test'/);
+  assert.match(server, /mailTransporter\.verify\(\)/);
+  assert.match(admin, /testEmailDelivery/);
+});
