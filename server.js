@@ -341,11 +341,47 @@ app.get('/contract', async (req, res) => {
 });
 
 // ── PetConnect Member Routes ─────────────────────────────────────────────
+const microchipPattern = /^\d{9,15}$/;
+const publicPetConnectAttempts = new Map();
+
+function normalizedMicrochip(value) {
+  return String(value || '').replace(/[\s-]/g, '');
+}
+
+function allowPublicPetConnectRequest(req, action, limit) {
+  const key = `${action}:${req.ip}`;
+  const cutoff = Date.now() - 60 * 60 * 1000;
+  const attempts = (publicPetConnectAttempts.get(key) || []).filter(timestamp => timestamp > cutoff);
+  if (attempts.length >= limit) return false;
+  attempts.push(Date.now());
+  publicPetConnectAttempts.set(key, attempts);
+  return true;
+}
+
+function validFinderEmail(value) {
+  return /^\S+@\S+\.\S+$/.test(String(value || '').trim());
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
+}
+
 app.get('/registry', async (req, res) => {
   const country = req.query.country === 'CA' ? 'CA' : req.query.country === 'US' ? 'US' : '';
   const species = ['Dog', 'Cat', 'Bird', 'Other'].includes(req.query.species) ? req.query.species : '';
   const alertType = ['lost', 'found'].includes(req.query.type) ? req.query.type : '';
   const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+  const microchip = normalizedMicrochip(req.query.microchip);
+  const microchipSearched = Boolean(req.query.microchip);
+  const contact = ['sent', 'invalid'].includes(req.query.contact) ? req.query.contact : '';
+  let microchipPet = null;
+  if (microchipPattern.test(microchip) && allowPublicPetConnectRequest(req, 'lookup', 20)) {
+    const pets = await query(`SELECT p.pet_name, p.microchip_number, p.species, p.breed, p.color, p.gender, p.birth_date, p.photo_filename
+      FROM registered_pets p JOIN members m ON m.id=p.member_id
+      WHERE p.microchip_number=? AND m.is_verified=TRUE LIMIT 1`, [microchip]);
+    microchipPet = pets[0] || null;
+    console.info('[PetConnect microchip lookup]', { outcome: microchipPet ? 'match' : 'no_match', ip: req.ip });
+  }
   const filters = ["a.status='active'"];
   const params = [];
   if (country) { filters.push('a.last_seen_country=?'); params.push(country); }
@@ -355,7 +391,34 @@ app.get('/registry', async (req, res) => {
   const totals = await query(`SELECT COUNT(*) AS total FROM missing_alerts a JOIN registered_pets p ON p.id=a.pet_id WHERE ${where}`, params);
   const perPage = 12;
   const alerts = await query(`SELECT a.*, p.pet_name, p.species, p.breed, p.color, p.photo_filename AS pet_photo FROM missing_alerts a JOIN registered_pets p ON p.id=a.pet_id WHERE ${where} ORDER BY a.created_at DESC LIMIT ? OFFSET ?`, [...params, perPage, (page - 1) * perPage]);
-  res.render('registry', { footer: await getFooter(), alerts, filters: { country, species, alertType }, page, pages: Math.max(1, Math.ceil(totals[0].total / perPage)) });
+  res.render('registry', { footer: await getFooter(), alerts, filters: { country, species, alertType }, page, pages: Math.max(1, Math.ceil(totals[0].total / perPage)), microchip, microchipSearched, microchipPet, contact });
+});
+
+app.post('/registry/microchip-contact', async (req, res) => {
+  const microchip = normalizedMicrochip(req.body.microchip);
+  const finderName = String(req.body.finder_name || '').trim();
+  const finderEmail = String(req.body.finder_email || '').trim();
+  const finderPhone = String(req.body.finder_phone || '').trim();
+  const message = String(req.body.message || '').trim();
+  const redirect = state => res.redirect('/registry?microchip=' + encodeURIComponent(microchip) + '&contact=' + state);
+  if (!allowPublicPetConnectRequest(req, 'contact', 5) || !microchipPattern.test(microchip) || !finderName || !validFinderEmail(finderEmail) || !message || message.length > 3000) {
+    console.info('[PetConnect microchip contact]', { outcome: 'invalid', ip: req.ip });
+    return redirect('invalid');
+  }
+  try {
+    const pets = await query(`SELECT p.pet_name, m.email AS owner_email
+      FROM registered_pets p JOIN members m ON m.id=p.member_id
+      WHERE p.microchip_number=? AND m.is_verified=TRUE LIMIT 1`, [microchip]);
+    const pet = pets[0];
+    if (pet) {
+      const html = `<p>Someone has sent a PetConnect message about <strong>${escapeHtml(pet.pet_name)}</strong>.</p><p><strong>Finder:</strong> ${escapeHtml(finderName)}<br><strong>Email:</strong> ${escapeHtml(finderEmail)}<br><strong>Phone:</strong> ${escapeHtml(finderPhone || 'Not provided')}</p><p><strong>Message:</strong><br>${escapeHtml(message).replace(/\n/g, '<br>')}</p>`;
+      await sendEmail(pet.owner_email, `PetConnect message about ${pet.pet_name}`, html);
+      console.info('[PetConnect microchip contact]', { outcome: 'relayed', ip: req.ip });
+    }
+  } catch (err) {
+    console.error('[PetConnect microchip contact]', err);
+  }
+  return redirect('sent');
 });
 
 app.get('/alert/:id', async (req, res) => {
