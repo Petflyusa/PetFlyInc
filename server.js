@@ -21,6 +21,9 @@ const { defaultFooter } = require('./lib/site');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+function getSiteUrl() {
+  return String(process.env.SITE_URL || '').trim().replace(/\/$/, '') || (process.env.NODE_ENV === 'production' ? 'https://petflyinc.com' : 'http://localhost:3000');
+}
 
 // ── Email Transporter ───────────────────────────────────────────────────────
 const smtpConfig = {
@@ -63,7 +66,7 @@ async function sendEmail(to, subject, htmlContent, attachments = []) {
 }
 
 async function sendPetConnectVerificationEmail(email, token) {
-  const verifyUrl = `${process.env.SITE_URL || 'http://localhost:3000'}/verify/${token}`;
+  const verifyUrl = `${getSiteUrl()}/verify/${token}`;
   return sendEmail(email, 'Verify your PetConnect account', `<p>Welcome to PetConnect.</p><p><a href="${verifyUrl}">Verify your email address</a> to activate your account.</p>`);
 }
 
@@ -507,7 +510,7 @@ async function notificationRecipients(alert, excludeMemberId) {
 
 async function sendAlertNotifications(alert, pet) {
   const recipients = await notificationRecipients(alert, alert.member_id);
-  const siteUrl = process.env.SITE_URL || 'http://localhost:3000';
+  const siteUrl = getSiteUrl();
   const detailUrl = `${siteUrl}/alert/${alert.id}`;
   const label = alert.alert_type === 'found' ? 'FOUND PET' : 'LOST PET';
   const subject = `[${label}] ${pet.pet_name} - ${pet.species}, ${alert.last_seen_city || 'Unknown location'}${alert.last_seen_state ? `, ${alert.last_seen_state}` : ''}`;
@@ -589,7 +592,7 @@ app.post('/partner/register', async (req, res) => {
     const coordinates = await geocodeAddress([req.body.address_line, req.body.city, req.body.state, req.body.postal_code, country]);
     const token = crypto.randomBytes(32).toString('hex');
     await query('INSERT INTO rescue_partners (partner_type_id, company_name, contact_name, email, phone, address_line, city, state, postal_code, country, latitude, longitude, website, verify_token) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [req.body.partner_type_id, String(req.body.company_name).trim(), String(req.body.contact_name).trim(), email, String(req.body.phone || '').trim() || null, String(req.body.address_line || '').trim() || null, String(req.body.city).trim(), String(req.body.state || '').trim() || null, String(req.body.postal_code || '').trim() || null, country, coordinates && coordinates.latitude || null, coordinates && coordinates.longitude || null, String(req.body.website || '').trim() || null, token]);
-    await sendEmail(email, 'Verify your PetConnect rescue partner profile', `<p><a href="${process.env.SITE_URL || 'http://localhost:3000'}/partner/claim/${token}">Verify and claim your partner account</a></p>`);
+    await sendEmail(email, 'Verify your PetConnect rescue partner profile', `<p><a href="${getSiteUrl()}/partner/claim/${token}">Verify and claim your partner account</a></p>`);
     res.redirect('/partners');
   } catch (err) { console.error('[PetConnect partner registration]', err); res.status(400).render('partner-register', { footer: await petConnectFooter(), types: await query('SELECT id, label FROM partner_types ORDER BY label'), error: err.code === 'ER_DUP_ENTRY' ? 'That email is already registered.' : 'Unable to register your organization right now.' }); }
 });
@@ -609,7 +612,7 @@ app.post('/partner/login', async (req, res) => {
 app.post('/partner/claim', async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase();
   const partners = await query('SELECT verify_token FROM rescue_partners WHERE email=?', [email]);
-  if (partners[0] && partners[0].verify_token) await sendEmail(email, 'Claim your PetConnect partner account', `<p><a href="${process.env.SITE_URL || 'http://localhost:3000'}/partner/claim/${partners[0].verify_token}">Set your password</a></p>`);
+  if (partners[0] && partners[0].verify_token) await sendEmail(email, 'Claim your PetConnect partner account', `<p><a href="${getSiteUrl()}/partner/claim/${partners[0].verify_token}">Set your password</a></p>`);
   res.render('partner-claim', { footer: await petConnectFooter(), error: null, sent: true });
 });
 app.get('/partner/claim/:token', async (req, res) => res.render('partner-claim-token', { footer: await petConnectFooter(), token: req.params.token, error: null }));
@@ -1239,7 +1242,7 @@ app.get('/api/admin/contracts/:id/portal', requireAdmin, async (req, res) => {
 });
 
 async function sendPortalAccessEmail(email, initialPassword) {
-  const loginUrl = `${process.env.SITE_URL || 'http://localhost:3000'}/portal/login`;
+  const loginUrl = `${getSiteUrl()}/portal/login`;
   return sendEmail(email, 'Your Pet Fly relocation portal access', `<p>Your Pet Fly relocation portal is ready.</p><p><a href="${loginUrl}">Sign in to the client portal</a></p><p><strong>Temporary password:</strong> ${initialPassword}</p><p>You will be asked to create a new password after signing in.</p>`);
 }
 
