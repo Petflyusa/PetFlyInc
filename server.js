@@ -601,6 +601,59 @@ app.post('/api/petconnect/pets', requireMember, (req, res, next) => {
   }
 });
 
+app.get('/dashboard/pets/:id/edit', requireMember, async (req, res) => {
+  try {
+    const pets = await query('SELECT id, pet_name, microchip_number, species, breed, color, gender, birth_date, photo_filename, notes FROM registered_pets WHERE id=? AND member_id=?', [req.params.id, req.session.memberId]);
+    if (!pets.length) return res.redirect('/dashboard?pet_error=' + encodeURIComponent('Pet not found.'));
+    res.render('petconnect-pet-edit', { footer: await getFooter(), pet: pets[0], error: req.query.error || null });
+  } catch (err) {
+    console.error('[PetConnect pet editor]', err);
+    res.redirect('/dashboard?pet_error=' + encodeURIComponent('Unable to open this pet record right now.'));
+  }
+});
+
+app.post('/api/petconnect/pets/:id', requireMember, (req, res, next) => {
+  petUpload.single('photo')(req, res, err => {
+    if (err) return res.redirect('/dashboard/pets/' + req.params.id + '/edit?error=' + encodeURIComponent(err.code === 'LIMIT_FILE_SIZE' ? 'Pet photos must be 2 MB or smaller.' : 'Use a JPG, PNG, WebP, or GIF pet photo.'));
+    next();
+  });
+}, async (req, res) => {
+  const petName = String(req.body.pet_name || '').trim();
+  const species = String(req.body.species || 'Dog');
+  const gender = String(req.body.gender || 'Unknown');
+  const microchip = String(req.body.microchip_number || '').replace(/[ -]/g, '');
+  const editUrl = '/dashboard/pets/' + req.params.id + '/edit';
+  const redirectWithError = message => res.redirect(editUrl + '?error=' + encodeURIComponent(message));
+  if (!petName || !['Dog', 'Cat', 'Bird', 'Other'].includes(species) || !['Male', 'Female', 'Unknown'].includes(gender)) {
+    if (req.file) fs.unlink(req.file.path, () => {});
+    return redirectWithError('Enter a valid pet name, species, and gender.');
+  }
+  if (microchip && !microchipPattern.test(microchip)) {
+    if (req.file) fs.unlink(req.file.path, () => {});
+    return redirectWithError('Microchip numbers must contain 9 to 15 digits.');
+  }
+  try {
+    const pets = await query('SELECT photo_filename FROM registered_pets WHERE id=? AND member_id=?', [req.params.id, req.session.memberId]);
+    if (!pets.length) {
+      if (req.file) fs.unlink(req.file.path, () => {});
+      return res.redirect('/dashboard?pet_error=' + encodeURIComponent('Pet not found.'));
+    }
+    const currentPhoto = pets[0].photo_filename;
+    const shouldRemovePhoto = req.body.remove_photo === 'on';
+    const photoFilename = req.file ? `/uploads/pets/${req.file.filename}` : shouldRemovePhoto ? null : currentPhoto;
+    await query('UPDATE registered_pets SET microchip_number=?, pet_name=?, species=?, breed=?, color=?, gender=?, birth_date=?, photo_filename=?, notes=? WHERE id=? AND member_id=?', [microchip || null, petName, species, String(req.body.breed || '').trim() || null, String(req.body.color || '').trim() || null, gender, req.body.birth_date || null, photoFilename, String(req.body.notes || '').trim() || null, req.params.id, req.session.memberId]);
+    if (currentPhoto && photoFilename !== currentPhoto) {
+      const photoPath = uploadFilePath(uploadDir, currentPhoto);
+      if (photoPath) fs.unlink(photoPath, () => {});
+    }
+    res.redirect('/dashboard');
+  } catch (err) {
+    if (req.file) fs.unlink(req.file.path, () => {});
+    console.error('[PetConnect pet update]', err);
+    return redirectWithError(err.code === 'ER_DUP_ENTRY' ? 'That microchip number is already registered.' : 'Unable to update this pet right now.');
+  }
+});
+
 app.post('/api/petconnect/pets/:id/delete', requireMember, async (req, res) => {
   try {
     const pets = await query('SELECT photo_filename FROM registered_pets WHERE id=? AND member_id=?', [req.params.id, req.session.memberId]);

@@ -9,7 +9,7 @@
         <div class="pet-cards">
           <% pets.forEach(function(pet) { %><article class="pet-card">
             <% if (pet.photo_filename) { %><img src="<%= pet.photo_filename %>" alt="<%= pet.pet_name %>"><% } else { %><div class="pet-photo-placeholder"><i class="fas fa-paw"></i></div><% } %>
-            <div class="pet-card-body"><h3><%= pet.pet_name %></h3><p><%= pet.species %><%= pet.breed ? ' · ' + pet.breed : '' %></p><p class="pet-meta">Microchip: <%= pet.microchip_number || 'Not provided' %></p><form method="post" action="/api/petconnect/pets/<%= pet.id %>/delete"><button class="btn-danger-public" type="submit">Delete</button></form></div>
+            <div class="pet-card-body"><h3><%= pet.pet_name %></h3><p><%= pet.species %><%= pet.breed ? ' · ' + pet.breed : '' %></p><p class="pet-meta">Microchip: <%= pet.microchip_number || 'Not provided' %></p><div class="hero-actions"><a class="btn-outline-public" href="/dashboard/pets/<%= pet.id %>/edit">Edit</a><form method="post" action="/api/petconnect/pets/<%= pet.id %>/delete"><button class="btn-danger-public" type="submit">Delete</button></form></div></div>
           </article><% }); %>
         </div>
       </section>

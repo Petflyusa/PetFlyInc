@@ -242,11 +242,17 @@ button { cursor: pointer; font-family: inherit; }
 .pet-card-body h3 { font-family: var(--font-serif); font-size: 1.25rem; font-weight: 400; }
 .pet-card-body p { color: var(--text-muted); font-size: 0.875rem; }
 .pet-meta { margin: 0.5rem 0; font-size: 0.75rem !important; }
+.pet-card-body .hero-actions { margin-top: 0.75rem; align-items: center; }
+.pet-card-body .hero-actions form { margin: 0; }
+.pet-card-body .btn-outline-public { padding: 0.4rem 0.75rem; font-size: 0.75rem; }
+.pet-edit-photo { display: grid; grid-template-columns: 160px 1fr; gap: var(--space-md); align-items: center; padding: var(--space-sm); border: 1px solid var(--warm-gray-100); background: var(--cream); }
+.pet-edit-photo img { width: 160px; aspect-ratio: 4 / 3; object-fit: cover; }
 .btn-danger-public { border: 1px solid #dc4040; color: #a52b2b; background: transparent; padding: 0.4rem 0.75rem; font-size: 0.75rem; }
 .empty-state-public { text-align: center; color: var(--text-muted); padding: var(--space-xl); }
 .empty-state-public i { color: var(--accent); font-size: 2rem; margin-bottom: var(--space-sm); }
 .empty-state-public h2 { font-family: var(--font-serif); font-weight: 400; color: var(--charcoal); margin-bottom: 0.5rem; }
 @media (max-width: 900px) { .petconnect-grid { grid-template-columns: 1fr; } }
+@media (max-width: 520px) { .pet-edit-photo { grid-template-columns: 1fr; } .pet-edit-photo img { width: 100%; } }
 @media (max-width: 640px) { .auth-card { padding: var(--space-lg); } .section-header-public { flex-direction: column; } }
 
 /* ── Hero ── */

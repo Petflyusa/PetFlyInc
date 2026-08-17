@@ -1,0 +1,20 @@
+<%- include('partials/header', { currentPage: 'dashboard', pageTitle: 'Edit Pet | PetConnect' }) %>
+<main class="section petconnect-dashboard">
+  <div class="container">
+    <div class="section-header-public"><div><span class="section-label">PetConnect</span><h1>Edit <%= pet.pet_name %></h1><p>Keep this record accurate for identification and alerts.</p></div><a class="btn-outline-public" href="/dashboard">Back to dashboard</a></div>
+    <section class="petconnect-panel" style="max-width:720px;">
+      <% if (error) { %><p class="auth-error"><%= error %></p><% } %>
+      <form method="post" action="/api/petconnect/pets/<%= pet.id %>" enctype="multipart/form-data" class="auth-form">
+        <label>Pet name<input name="pet_name" value="<%= pet.pet_name %>" required></label>
+        <label>Microchip number <span>(ISO / AVID, optional)</span><input name="microchip_number" value="<%= pet.microchip_number || '' %>" inputmode="numeric" pattern="[0-9 -]{9,20}" placeholder="9 to 15 digits"></label>
+        <div class="form-grid"><label>Species<select name="species"><% ['Dog','Cat','Bird','Other'].forEach(function(value) { %><option value="<%= value %>" <%= pet.species === value ? 'selected' : '' %>><%= value %></option><% }) %></select></label><label>Gender<select name="gender"><% ['Unknown','Male','Female'].forEach(function(value) { %><option value="<%= value %>" <%= pet.gender === value ? 'selected' : '' %>><%= value %></option><% }) %></select></label></div>
+        <div class="form-grid"><label>Breed<input name="breed" value="<%= pet.breed || '' %>"></label><label>Color<input name="color" value="<%= pet.color || '' %>"></label></div>
+        <div class="form-grid"><label>Birth date<input type="date" name="birth_date" value="<%= pet.birth_date ? String(pet.birth_date).slice(0, 10) : '' %>"></label><label>Replace photo<input type="file" name="photo" accept="image/jpeg,image/png,image/webp,image/gif"></label></div>
+        <% if (pet.photo_filename) { %><div class="pet-edit-photo"><img src="<%= pet.photo_filename %>" alt="<%= pet.pet_name %>"><label class="checkbox-label"><input type="checkbox" name="remove_photo"> Remove current photo</label></div><% } %>
+        <label>Notes<textarea name="notes" rows="5"><%= pet.notes || '' %></textarea></label>
+        <div class="hero-actions"><button class="btn-primary" type="submit">Save changes</button><a class="btn-outline-public" href="/dashboard">Cancel</a></div>
+      </form>
+    </section>
+  </div>
+</main>
+<%- include('partials/footer') %>

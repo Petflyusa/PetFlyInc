@@ -40,6 +40,23 @@ test('PetConnect exposes member authentication and pet routes', () => {
   assert.match(styles, /\.petconnect-hero \.btn-primary \{ width: auto; background: var\(--accent\);/);
 });
 
+test('PetConnect owners can edit their own pet details and use the public sign-in entry', () => {
+  const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  const dashboard = fs.readFileSync(path.join(__dirname, '..', 'views', 'petconnect-dashboard.ejs'), 'utf8');
+  const registry = fs.readFileSync(path.join(__dirname, '..', 'views', 'registry.ejs'), 'utf8');
+  const editorPath = path.join(__dirname, '..', 'views', 'petconnect-pet-edit.ejs');
+
+  assert.match(server, /app\.get\('\/dashboard\/pets\/:id\/edit'/);
+  assert.match(server, /app\.post\('\/api\/petconnect\/pets\/:id'/);
+  assert.match(server, /WHERE id=\? AND member_id=\?/);
+  assert.match(dashboard, /\/dashboard\/pets\/<%= pet\.id %>\/edit/);
+  assert.match(registry, /href="\/login"/);
+  assert.equal(fs.existsSync(editorPath), true);
+  const editor = fs.readFileSync(editorPath, 'utf8');
+  assert.match(editor, /name="remove_photo"/);
+  assert.match(editor, /name="microchip_number"/);
+});
+
 test('PetConnect alerts and rescue partner migration is available at startup', () => {
   const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations', '004_petconnect_alerts.sql'), 'utf8');
   const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
