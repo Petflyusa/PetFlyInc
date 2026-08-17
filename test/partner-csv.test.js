@@ -32,3 +32,14 @@ test('classifies veterinary CSV subtypes as the existing veterinary partner type
 
   assert.equal(type.id, 1);
 });
+
+test('classifies animal shelter CSV subtypes as the existing shelter partner type', () => {
+  const types = [
+    { id: 1, slug: 'vet', label: 'Veterinary Hospital' },
+    { id: 2, slug: 'shelter', label: 'Animal Shelter' }
+  ];
+
+  ['Municipal Animal Control & Care Center', 'Humane Society / SPCA', 'Pet Adoption Center', 'Non-Profit Animal Rescue Center'].forEach(label => {
+    assert.equal(findPartnerType(types, label).id, 2, label);
+  });
+});
