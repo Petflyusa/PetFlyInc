@@ -21,7 +21,7 @@ const { defaultFooter } = require('./lib/site');
 const { ensureUploadStorage, resolveUploadStorage, uploadFilePath } = require('./lib/uploads');
 const { findPartnerType, normalizePartnerImportRow, parsePartnerCsv } = require('./lib/partner-csv');
 const { buildPartnerInsert } = require('./lib/partner-import');
-const { GEOCODE_STATUSES, isValidCoordinates } = require('./lib/partner-geocoding');
+const { GEOCODE_STATUSES, isValidCoordinates, nextGeocodeStatus } = require('./lib/partner-geocoding');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -238,7 +238,7 @@ function requirePartner(req, res, next) {
 
 let geocodeQueue = Promise.resolve();
 let lastGeocodeAt = 0;
-function geocodeAddress(parts) {
+function geocodeAddress(parts, { throwOnProviderError = false } = {}) {
   const address = parts.filter(Boolean).join(', ');
   if (!address) return Promise.resolve(null);
   const task = geocodeQueue.then(async () => {
@@ -247,11 +247,13 @@ function geocodeAddress(parts) {
     lastGeocodeAt = Date.now();
     try {
       const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(address)}`, { headers: { 'User-Agent': 'PetFlyInc-PetConnect/1.0 (info@petflyinc.com)' } });
+      if (!response.ok) throw new Error(`Geocoding provider returned HTTP ${response.status}.`);
       const results = await response.json();
       if (!results[0]) return null;
       return { latitude: Number(results[0].lat), longitude: Number(results[0].lon) };
     } catch (err) {
       console.warn('[PetConnect geocoding]', err.message);
+      if (throwOnProviderError) throw err;
       return null;
     }
   });
@@ -275,11 +277,18 @@ async function processPartnerGeocodeQueue() {
     const partner = partners[0];
     const attempts = Number(partner.geocode_attempts) + 1;
     await query('UPDATE rescue_partners SET geocode_attempts=? WHERE id=? AND geocode_status=\'pending\'', [attempts, partner.id]);
-    const coordinates = await geocodeAddress([partner.address_line, partner.city, partner.state, partner.postal_code, partner.country]);
-    if (isValidCoordinates(coordinates)) {
+    let coordinates = null;
+    let error = null;
+    try {
+      coordinates = await geocodeAddress([partner.address_line, partner.city, partner.state, partner.postal_code, partner.country], { throwOnProviderError: true });
+    } catch (providerError) {
+      error = `Geocoding provider error: ${providerError.message}`;
+    }
+    const status = nextGeocodeStatus({ coordinates, error, attempts, maxAttempts: PARTNER_GEOCODE_MAX_ATTEMPTS });
+    if (status === GEOCODE_STATUSES.located) {
       await query('UPDATE rescue_partners SET latitude=?, longitude=?, geocode_status=?, geocoded_at=NOW(), geocode_error=NULL WHERE id=?', [coordinates.latitude, coordinates.longitude, GEOCODE_STATUSES.located, partner.id]);
     } else {
-      await query('UPDATE rescue_partners SET geocode_status=?, geocode_error=? WHERE id=?', [GEOCODE_STATUSES.needsReview, 'No unambiguous geographic match was found for the saved address.', partner.id]);
+      await query('UPDATE rescue_partners SET geocode_status=?, geocode_error=? WHERE id=?', [status, error || 'No unambiguous geographic match was found for the saved address.', partner.id]);
     }
     return true;
   } catch (err) {
@@ -847,7 +856,13 @@ app.delete('/api/admin/petconnect/alerts/:id', requireAdmin, async (req, res) =>
 });
 
 app.get('/api/admin/petconnect/partner-types', requireAdmin, async (req, res) => res.json({ types: await query('SELECT id, slug, label FROM partner_types ORDER BY label') }));
-const partnerCsvUpload = multerModule({ storage: multerModule.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });
+const partnerCsvUpload = multerModule({ storage: multerModule.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+function partnerCsvFileUpload(req, res, next) {
+  partnerCsvUpload.single('file')(req, res, err => {
+    if (!err) return next();
+    return res.status(400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? 'CSV files must be 10 MB or smaller.' : 'Unable to read this CSV file.' });
+  });
+}
 async function validatePartnerRows(rows) {
   const types = await query('SELECT id, slug, label FROM partner_types');
   const existing = await query('SELECT email FROM rescue_partners');
@@ -864,13 +879,16 @@ async function validatePartnerRows(rows) {
     return { row: item.row, data: { ...data, email, country: String(data.country || '').toUpperCase(), partner_type_id: type && type.id }, errors };
   });
 }
-app.post('/api/admin/petconnect/partners/csv-preview', requireAdmin, partnerCsvUpload.single('file'), async (req, res) => {
+app.post('/api/admin/petconnect/partners/csv-preview', requireAdmin, partnerCsvFileUpload, async (req, res) => {
   if (!req.file || !/\.csv$/i.test(req.file.originalname)) return res.status(400).json({ error: 'Upload a CSV file.' });
   const rows = await validatePartnerRows(parsePartnerCsv(req.file.buffer.toString('utf8')));
-  res.json({ rows });
+  const valid = rows.filter(item => !item.errors.length).length;
+  res.json({ summary: { total: rows.length, valid, invalid: rows.length - valid, shown: Math.min(rows.length, 100) }, rows: rows.slice(0, 100) });
 });
-app.post('/api/admin/petconnect/partners/csv-import', requireAdmin, async (req, res) => {
-  const rows = Array.isArray(req.body.rows) ? await validatePartnerRows(req.body.rows.map((data, index) => ({ row: index + 1, data }))) : [];
+app.post('/api/admin/petconnect/partners/csv-import', requireAdmin, partnerCsvFileUpload, async (req, res) => {
+  const sourceRows = req.file ? parsePartnerCsv(req.file.buffer.toString('utf8')) : Array.isArray(req.body.rows) ? req.body.rows.map((data, index) => ({ row: index + 1, data })) : [];
+  if (!sourceRows.length) return res.status(400).json({ error: 'Upload a CSV file or select valid rows.' });
+  const rows = await validatePartnerRows(sourceRows);
   const validRows = rows.filter(item => !item.errors.length).map(item => item.data);
   const errors = rows.filter(item => item.errors.length).map(item => ({ row: item.row, errors: item.errors }));
   let inserted = 0;
@@ -884,7 +902,8 @@ app.post('/api/admin/petconnect/partners/csv-import', requireAdmin, async (req, 
       return res.status(500).json({ error: 'Unable to save the selected organizations.' });
     }
   }
-  res.json({ inserted, errors, geocoding: 'Addresses were saved. Coordinates can be added later from the organization editor.' });
+  schedulePartnerGeocodeWorker();
+  res.json({ inserted, skipped: validRows.length - inserted, errors: errors.slice(0, 100), errorCount: errors.length, geocoding: 'Addresses are queued for background geocoding.' });
 });
 app.post('/api/admin/petconnect/partners/geocode-retry', requireAdmin, async (req, res) => {
   const ids = [...new Set((req.body.partner_ids || []).map(Number).filter(Number.isInteger))];

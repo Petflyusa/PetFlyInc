@@ -31,6 +31,7 @@ test('runs pending organization geocoding outside admin import requests', () => 
   const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
   assert.match(server, /function processPartnerGeocodeQueue\(\)/);
   assert.match(server, /geocode_status='pending'/);
+  assert.match(server, /nextGeocodeStatus\(/);
   assert.match(server, /schedulePartnerGeocodeWorker\(processed \? 1000 : 60000\)/);
   assert.match(server, /app\.post\('\/api\/admin\/petconnect\/partners\/geocode-retry'/);
 });

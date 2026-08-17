@@ -136,6 +136,16 @@ test('Organizations workspace provides page controls, geographic status, and pag
   assert.match(app, /pcPartnerGeo/);
 });
 
+test('large organization CSVs are reviewed and imported as uploaded files', () => {
+  const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  const admin = fs.readFileSync(path.join(__dirname, '..', 'admin', 'app.js'), 'utf8');
+  assert.match(server, /fileSize: 10 \* 1024 \* 1024/);
+  assert.match(server, /rows: rows\.slice\(0, 100\)/);
+  assert.match(server, /partnerCsvUpload\.single\('file'\)/);
+  assert.match(admin, /form\.append\('file',input\.files\[0\]\)/);
+  assert.match(admin, /Import all valid organizations/);
+});
+
 test('PetConnect relays public microchip finder contacts without exposing owner details', () => {
   const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
   const registry = fs.readFileSync(path.join(__dirname, '..', 'views', 'registry.ejs'), 'utf8');
