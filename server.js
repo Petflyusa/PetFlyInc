@@ -19,6 +19,7 @@ const { generateContractPdf } = require('./lib/contract-pdf');
 const { documentCategories, documentExpiryStatus, isActiveRelocation, normalizeYouTubeUrl, relocationSteps } = require('./lib/portal');
 const { defaultFooter } = require('./lib/site');
 const { ensureUploadStorage, resolveUploadStorage, uploadFilePath } = require('./lib/uploads');
+const { findPartnerType, normalizePartnerImportRow, parsePartnerCsv } = require('./lib/partner-csv');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -806,30 +807,16 @@ app.delete('/api/admin/petconnect/alerts/:id', requireAdmin, async (req, res) =>
 
 app.get('/api/admin/petconnect/partner-types', requireAdmin, async (req, res) => res.json({ types: await query('SELECT id, slug, label FROM partner_types ORDER BY label') }));
 const partnerCsvUpload = multerModule({ storage: multerModule.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });
-function parsePartnerCsv(text) {
-  const rows = [];
-  let row = [], field = '', quoted = false;
-  for (let i = 0; i < text.length; i += 1) {
-    const character = text[i];
-    if (character === '"' && (quoted || field === '')) { if (quoted && text[i + 1] === '"') { field += '"'; i += 1; } else quoted = !quoted; }
-    else if (character === ',' && !quoted) { row.push(field.trim()); field = ''; }
-    else if ((character === '\n' || character === '\r') && !quoted) { if (character === '\r' && text[i + 1] === '\n') i += 1; row.push(field.trim()); if (row.some(Boolean)) rows.push(row); row = []; field = ''; }
-    else field += character;
-  }
-  if (field || row.length) { row.push(field.trim()); if (row.some(Boolean)) rows.push(row); }
-  const headers = (rows.shift() || []).map(header => header.toLowerCase().replace(/\s+/g, '_'));
-  return rows.map((values, index) => ({ row: index + 2, data: Object.fromEntries(headers.map((header, column) => [header, values[column] || ''])) }));
-}
 async function validatePartnerRows(rows) {
   const types = await query('SELECT id, slug, label FROM partner_types');
   const existing = await query('SELECT email FROM rescue_partners');
   const emails = new Set(existing.map(row => row.email.toLowerCase()));
   const seen = new Set();
   return rows.map(item => {
-    const data = item.data || {};
+    const data = normalizePartnerImportRow(item.data);
     const errors = [];
     const email = String(data.email || '').trim().toLowerCase();
-    const type = types.find(candidate => String(candidate.id) === String(data.organization_type || '') || candidate.slug.toLowerCase() === String(data.organization_type || '').trim().toLowerCase() || candidate.label.toLowerCase() === String(data.organization_type || '').trim().toLowerCase());
+    const type = findPartnerType(types, data.organization_type);
     if (!data.organization_name || !data.contact_name || !/^\S+@\S+\.\S+$/.test(email) || !data.city || !['US', 'CA'].includes(String(data.country || '').toUpperCase()) || !type) errors.push('Organization, contact, valid email, city, country, and organization type are required.');
     if (emails.has(email) || seen.has(email)) errors.push('Duplicate organization email.');
     seen.add(email);
