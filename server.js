@@ -20,6 +20,7 @@ const { documentCategories, documentExpiryStatus, isActiveRelocation, normalizeY
 const { defaultFooter } = require('./lib/site');
 const { ensureUploadStorage, resolveUploadStorage, uploadFilePath } = require('./lib/uploads');
 const { findPartnerType, normalizePartnerImportRow, parsePartnerCsv } = require('./lib/partner-csv');
+const { buildPartnerInsert } = require('./lib/partner-import');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -830,13 +831,20 @@ app.post('/api/admin/petconnect/partners/csv-preview', requireAdmin, partnerCsvU
 });
 app.post('/api/admin/petconnect/partners/csv-import', requireAdmin, async (req, res) => {
   const rows = Array.isArray(req.body.rows) ? await validatePartnerRows(req.body.rows.map((data, index) => ({ row: index + 1, data }))) : [];
-  let inserted = 0; const errors = [];
-  for (const item of rows) {
-    if (item.errors.length) { errors.push({ row: item.row, errors: item.errors }); continue; }
-    const data = item.data; const coords = await geocodeAddress([data.address_line, data.city, data.state, data.postal_code, data.country]);
-    try { await query('INSERT INTO rescue_partners (partner_type_id, company_name, contact_name, email, phone, address_line, city, state, postal_code, country, latitude, longitude, website, is_active, is_verified) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [data.partner_type_id, data.organization_name, data.contact_name, data.email, data.phone || null, data.address_line || null, data.city, data.state || null, data.postal_code || null, data.country, coords && coords.latitude || null, coords && coords.longitude || null, data.website || null, false, false]); inserted += 1; } catch (err) { errors.push({ row: item.row, errors: [err.code === 'ER_DUP_ENTRY' ? 'Duplicate organization email.' : 'Unable to save this organization.'] }); }
+  const validRows = rows.filter(item => !item.errors.length).map(item => item.data);
+  const errors = rows.filter(item => item.errors.length).map(item => ({ row: item.row, errors: item.errors }));
+  let inserted = 0;
+  for (let offset = 0; offset < validRows.length; offset += 100) {
+    const statement = buildPartnerInsert(validRows.slice(offset, offset + 100));
+    try {
+      const [result] = await pool.execute(statement.sql, statement.params);
+      inserted += result.affectedRows;
+    } catch (err) {
+      console.error('[PetConnect CSV import]', err);
+      return res.status(500).json({ error: 'Unable to save the selected organizations.' });
+    }
   }
-  res.json({ inserted, errors });
+  res.json({ inserted, errors, geocoding: 'Addresses were saved. Coordinates can be added later from the organization editor.' });
 });
 app.post('/api/admin/petconnect/partners/invite', requireAdmin, async (req, res) => {
   const ids = [...new Set((req.body.partner_ids || []).map(Number).filter(Number.isInteger))];
