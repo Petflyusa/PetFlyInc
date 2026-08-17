@@ -2,7 +2,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { quoteConfirmation, memberVerification } = require('../lib/email-templates');
+const templates = require('../lib/email-templates');
+const { quoteConfirmation, memberVerification } = templates;
 
 test('quote confirmation uses branded, safe email content', () => {
   const email = quoteConfirmation({
@@ -34,4 +35,26 @@ test('publishes the email header logo asset', () => {
 
   assert.ok(fs.existsSync(logoPath), 'email header logo should be publicly available');
   assert.ok(fs.statSync(logoPath).size > 0, 'email header logo should not be empty');
+});
+
+test('all fixed email templates render a branded HTML and text message', () => {
+  const siteUrl = 'https://petflyinc.com';
+  const link = `${siteUrl}/example`;
+  const messages = [
+    templates.contactConfirmation({ name: 'Ava', siteUrl }),
+    templates.contractSigned({ contractNumber: 'PF-DEMO-1001', siteUrl }),
+    templates.finderMessage({ petName: 'Milo', finderName: 'Lee', finderEmail: 'lee@example.com', finderPhone: '', message: 'I found Milo.', siteUrl }),
+    templates.lostFoundAlert({ petName: 'Milo', alertType: 'lost', location: 'Los Angeles, CA', alertUrl: link, siteUrl }),
+    templates.partnerVerification({ claimUrl: link, siteUrl }),
+    templates.partnerInvitation({ organizationName: 'Care Clinic', claimUrl: link, siteUrl }),
+    templates.portalAccess({ loginUrl: link, initialPassword: 'temporary-password', siteUrl }),
+    templates.internalQuoteNotification({ name: 'Ava', email: 'ava@example.com', details: [['Pet', 'Milo']], siteUrl }),
+    templates.internalContactNotification({ name: 'Ava', email: 'ava@example.com', subject: 'Question', message: 'Please call.', siteUrl }),
+    templates.smtpTest({ siteUrl })
+  ];
+  for (const email of messages) {
+    assert.ok(email.subject);
+    assert.match(email.html, /Pet Fly Inc/);
+    assert.ok(email.text);
+  }
 });
