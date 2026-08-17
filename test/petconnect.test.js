@@ -102,6 +102,7 @@ test('PetConnect admin migration supports full member addresses and organization
 
 test('PetConnect admin provides dashboard summaries and filtered dedicated data APIs', () => {
   const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations', '008_petconnect_geocode_retries.sql'), 'utf8');
   assert.match(server, /app\.get\('\/api\/admin\/petconnect\/summary'/);
   assert.match(server, /req\.query\.verified/);
   assert.match(server, /req\.query\.missing/);
@@ -109,6 +110,8 @@ test('PetConnect admin provides dashboard summaries and filtered dedicated data 
   assert.match(server, /req\.query\.partner_type_id/);
   assert.match(server, /address_line/);
   assert.match(server, /geocodeAddress\(\[addressLine, city, state, postalCode, country\]\)/);
+  assert.match(server, /next_geocode_retry_at/);
+  assert.match(migration, /next_geocode_retry_at DATETIME NULL/i);
 });
 
 test('Admin PetConnect uses dashboard and dedicated searchable workspaces', () => {

@@ -7,6 +7,8 @@ const {
   GEOCODE_STATUSES,
   isValidCoordinates,
   isRetryableGeocode,
+  isRetryableGeocodeError,
+  geocodeRetryDelaySeconds,
   nextGeocodeStatus
 } = require('../lib/partner-geocoding');
 
@@ -22,6 +24,12 @@ test('classifies geocoding results and bounded retries', () => {
   assert.equal(nextGeocodeStatus({ coordinates: null, attempts: 1, maxAttempts: 3 }), 'needs_review');
   assert.equal(nextGeocodeStatus({ error: 'provider timeout', attempts: 1, maxAttempts: 3 }), 'pending');
   assert.equal(nextGeocodeStatus({ error: 'provider timeout', attempts: 3, maxAttempts: 3 }), 'failed');
+  assert.equal(nextGeocodeStatus({ error: 'Geocoding provider returned HTTP 429.', retryable: true, attempts: 3, maxAttempts: 3 }), 'pending');
+  assert.equal(isRetryableGeocodeError('Geocoding provider returned HTTP 429.'), true);
+  assert.equal(isRetryableGeocodeError('Geocoding provider returned HTTP 400.'), false);
+  assert.equal(geocodeRetryDelaySeconds(1), 900);
+  assert.equal(geocodeRetryDelaySeconds(3), 3600);
+  assert.equal(geocodeRetryDelaySeconds(20), 86400);
   assert.equal(isRetryableGeocode('pending'), true);
   assert.equal(isRetryableGeocode('needs_review'), true);
   assert.equal(isRetryableGeocode('located'), false);

@@ -21,7 +21,7 @@ const { defaultFooter } = require('./lib/site');
 const { ensureUploadStorage, resolveUploadStorage, uploadFilePath } = require('./lib/uploads');
 const { findPartnerType, normalizePartnerImportRow, parsePartnerCsv } = require('./lib/partner-csv');
 const { buildPartnerInsert } = require('./lib/partner-import');
-const { GEOCODE_STATUSES, isValidCoordinates, nextGeocodeStatus } = require('./lib/partner-geocoding');
+const { GEOCODE_STATUSES, isRetryableGeocodeError, isValidCoordinates, geocodeRetryDelaySeconds, nextGeocodeStatus } = require('./lib/partner-geocoding');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -266,13 +266,15 @@ function radiusKilometers(radius, unit) { return unit === 'mi' ? Number(radius) 
 const PARTNER_GEOCODE_MAX_ATTEMPTS = 3;
 let partnerGeocodeWorkerActive = false;
 let partnerGeocodeWorkerTimer = null;
+let partnerGeocodeCooldownUntil = 0;
 
 async function processPartnerGeocodeQueue() {
   if (partnerGeocodeWorkerActive) return false;
+  if (Date.now() < partnerGeocodeCooldownUntil) return false;
   partnerGeocodeWorkerActive = true;
   try {
     const partners = await query(`SELECT id, address_line, city, state, postal_code, country, geocode_attempts
-      FROM rescue_partners WHERE geocode_status='pending' AND geocode_attempts < ? ORDER BY id ASC LIMIT 1`, [PARTNER_GEOCODE_MAX_ATTEMPTS]);
+      FROM rescue_partners WHERE geocode_status='pending' AND (next_geocode_retry_at IS NULL OR next_geocode_retry_at <= NOW()) ORDER BY id ASC LIMIT 1`);
     if (!partners.length) return false;
     const partner = partners[0];
     const attempts = Number(partner.geocode_attempts) + 1;
@@ -284,11 +286,14 @@ async function processPartnerGeocodeQueue() {
     } catch (providerError) {
       error = `Geocoding provider error: ${providerError.message}`;
     }
-    const status = nextGeocodeStatus({ coordinates, error, attempts, maxAttempts: PARTNER_GEOCODE_MAX_ATTEMPTS });
+    const retryable = isRetryableGeocodeError(error);
+    const status = nextGeocodeStatus({ coordinates, error, retryable, attempts, maxAttempts: PARTNER_GEOCODE_MAX_ATTEMPTS });
     if (status === GEOCODE_STATUSES.located) {
-      await query('UPDATE rescue_partners SET latitude=?, longitude=?, geocode_status=?, geocoded_at=NOW(), geocode_error=NULL WHERE id=?', [coordinates.latitude, coordinates.longitude, GEOCODE_STATUSES.located, partner.id]);
+      await query('UPDATE rescue_partners SET latitude=?, longitude=?, geocode_status=?, geocoded_at=NOW(), geocode_error=NULL, next_geocode_retry_at=NULL WHERE id=?', [coordinates.latitude, coordinates.longitude, GEOCODE_STATUSES.located, partner.id]);
     } else {
-      await query('UPDATE rescue_partners SET geocode_status=?, geocode_error=? WHERE id=?', [status, error || 'No unambiguous geographic match was found for the saved address.', partner.id]);
+      const retryAt = retryable ? new Date(Date.now() + geocodeRetryDelaySeconds(attempts) * 1000) : null;
+      await query('UPDATE rescue_partners SET geocode_status=?, geocode_error=?, next_geocode_retry_at=? WHERE id=?', [status, error || 'No unambiguous geographic match was found for the saved address.', retryAt, partner.id]);
+      if (/HTTP 429/.test(error || '')) partnerGeocodeCooldownUntil = Number(retryAt);
     }
     return true;
   } catch (err) {
@@ -962,7 +967,7 @@ app.post('/api/admin/petconnect/partners/geocode-retry', requireAdmin, async (re
   const ids = [...new Set((req.body.partner_ids || []).map(Number).filter(Number.isInteger))];
   if (!ids.length) return res.status(400).json({ error: 'Select at least one organization.' });
   const placeholders = ids.map(() => '?').join(',');
-  const [result] = await pool.execute(`UPDATE rescue_partners SET latitude=NULL, longitude=NULL, geocode_status='pending', geocode_attempts=0, geocoded_at=NULL, geocode_error=NULL WHERE id IN (${placeholders})`, ids);
+  const [result] = await pool.execute(`UPDATE rescue_partners SET latitude=NULL, longitude=NULL, geocode_status='pending', geocode_attempts=0, geocoded_at=NULL, geocode_error=NULL, next_geocode_retry_at=NULL WHERE id IN (${placeholders})`, ids);
   schedulePartnerGeocodeWorker();
   res.json({ queued: result.affectedRows });
 });
@@ -1009,7 +1014,7 @@ app.patch('/api/admin/petconnect/partners/:id', requireAdmin, async (req, res) =
   const state = String(body.state || '').trim() || null;
   const country = body.country === 'CA' ? 'CA' : 'US';
   const postalCode = String(body.postal_code || '').trim() || null;
-  await query('UPDATE rescue_partners SET company_name=?, contact_name=?, email=?, phone=?, address_line=?, city=?, state=?, postal_code=?, country=?, latitude=NULL, longitude=NULL, geocode_status=\'pending\', geocode_attempts=0, geocoded_at=NULL, geocode_error=NULL, website=?, partner_type_id=?, is_active=? WHERE id=?', [String(body.company_name || '').trim(), String(body.contact_name || '').trim(), String(body.email || '').trim().toLowerCase(), String(body.phone || '').trim() || null, addressLine, city, state, postalCode, country, String(body.website || '').trim() || null, body.partner_type_id, body.is_active ? true : false, req.params.id]);
+  await query('UPDATE rescue_partners SET company_name=?, contact_name=?, email=?, phone=?, address_line=?, city=?, state=?, postal_code=?, country=?, latitude=NULL, longitude=NULL, geocode_status=\'pending\', geocode_attempts=0, geocoded_at=NULL, geocode_error=NULL, next_geocode_retry_at=NULL, website=?, partner_type_id=?, is_active=? WHERE id=?', [String(body.company_name || '').trim(), String(body.contact_name || '').trim(), String(body.email || '').trim().toLowerCase(), String(body.phone || '').trim() || null, addressLine, city, state, postalCode, country, String(body.website || '').trim() || null, body.partner_type_id, body.is_active ? true : false, req.params.id]);
   schedulePartnerGeocodeWorker();
   res.json({ success: true });
 });
