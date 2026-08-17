@@ -116,6 +116,26 @@ test('PetConnect admins can preview CSV organizations and invite selected record
   assert.match(server, /sendEmail\(partner\.email/);
 });
 
+test('PetConnect organization API supports paged geographic management', () => {
+  const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  assert.match(server, /req\.query\.per_page/);
+  assert.match(server, /COUNT\(\*\) AS total/);
+  assert.match(server, /pagination: \{ page, perPage, total/);
+  assert.match(server, /rp\.geocode_status/);
+  assert.match(server, /req\.query\.geocode_status/);
+});
+
+test('Organizations workspace provides page controls, geographic status, and page selection', () => {
+  const admin = fs.readFileSync(path.join(__dirname, '..', 'views', 'admin.ejs'), 'utf8');
+  const app = fs.readFileSync(path.join(__dirname, '..', 'admin', 'app.js'), 'utf8');
+  assert.match(admin, /id="pcPartnerPerPage"/);
+  assert.match(admin, /id="pcPartnerGeoStatus"/);
+  assert.match(admin, /id="partnerPagination"/);
+  assert.match(app, /toggleAllPetConnectPartners/);
+  assert.match(app, /retrySelectedPartnerGeocoding/);
+  assert.match(app, /pcPartnerGeo/);
+});
+
 test('PetConnect relays public microchip finder contacts without exposing owner details', () => {
   const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
   const registry = fs.readFileSync(path.join(__dirname, '..', 'views', 'registry.ejs'), 'utf8');

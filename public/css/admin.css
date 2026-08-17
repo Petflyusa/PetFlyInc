@@ -392,6 +392,15 @@ label.field-label {
 .pc-bulkbar span { color: var(--text-muted); font-size: 0.85rem; }
 .csv-review { display: grid; gap: 0.6rem; padding: 1rem; margin-bottom: 1rem; background: var(--surface); border: 1px solid var(--border); }
 .csv-review label { font-size: 0.85rem; }
+.pc-pagination { display: flex; justify-content: space-between; gap: 0.75rem; align-items: center; margin-top: 1rem; color: var(--text-muted); font-size: 0.85rem; }
+.pc-pagination > div { display: inline-flex; align-items: center; gap: 0.5rem; }
+.pc-pagination .btn-outline { min-width: 34px; min-height: 34px; padding: 0.4rem; }
+.pc-geo { display: inline-block; font-size: 0.78rem; font-weight: 500; }
+.pc-geo-located { color: #70d090; }
+.pc-geo-pending { color: var(--accent); }
+.pc-geo-needs_review, .pc-geo-failed { color: #ffbb70; }
+.data-table td .pc-geo + small { display: block; margin-top: 0.2rem; color: var(--text-muted); }
+.pc-geo-retry { margin-left: 0.35rem; min-width: 28px; min-height: 28px; padding: 0.25rem; }
 
 @media (max-width: 760px) {
   body.admin-nav-open { overflow: hidden; }
@@ -458,6 +467,8 @@ label.field-label {
   .stat-num { font-size: 1.25rem; }
   #recentQuotes, #quotesTable, #contactsTable, #contractsTable, #countriesTable, #airlinesTable { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .data-table { min-width: 620px; }
+  #petconnectPartners { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .pc-pagination { align-items: flex-start; flex-direction: column; }
   .modal { align-items: flex-end; padding: 0; }
   .modal-content { max-width: none; max-height: calc(100dvh - 0.75rem); border-radius: 4px 4px 0 0; }
   .modal-header { padding: 1rem; }

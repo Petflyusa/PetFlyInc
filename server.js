@@ -21,6 +21,7 @@ const { defaultFooter } = require('./lib/site');
 const { ensureUploadStorage, resolveUploadStorage, uploadFilePath } = require('./lib/uploads');
 const { findPartnerType, normalizePartnerImportRow, parsePartnerCsv } = require('./lib/partner-csv');
 const { buildPartnerInsert } = require('./lib/partner-import');
+const { GEOCODE_STATUSES, isValidCoordinates } = require('./lib/partner-geocoding');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -106,6 +107,7 @@ const pool = mysql.createPool({
 // at startup so contract issuance is available immediately after a restart.
 Promise.all([ensureContractSchema(pool), ensureQuoteSchema(pool), ensurePetConnectSchema(pool)]).then(() => {
   console.log('[Contract database] Schema ready');
+  schedulePartnerGeocodeWorker();
 }).catch(err => {
   console.error('[Contract database] Schema setup failed:', err.message);
 });
@@ -258,6 +260,44 @@ function geocodeAddress(parts) {
 }
 
 function radiusKilometers(radius, unit) { return unit === 'mi' ? Number(radius) * 1.60934 : Number(radius); }
+
+const PARTNER_GEOCODE_MAX_ATTEMPTS = 3;
+let partnerGeocodeWorkerActive = false;
+let partnerGeocodeWorkerTimer = null;
+
+async function processPartnerGeocodeQueue() {
+  if (partnerGeocodeWorkerActive) return false;
+  partnerGeocodeWorkerActive = true;
+  try {
+    const partners = await query(`SELECT id, address_line, city, state, postal_code, country, geocode_attempts
+      FROM rescue_partners WHERE geocode_status='pending' AND geocode_attempts < ? ORDER BY id ASC LIMIT 1`, [PARTNER_GEOCODE_MAX_ATTEMPTS]);
+    if (!partners.length) return false;
+    const partner = partners[0];
+    const attempts = Number(partner.geocode_attempts) + 1;
+    await query('UPDATE rescue_partners SET geocode_attempts=? WHERE id=? AND geocode_status=\'pending\'', [attempts, partner.id]);
+    const coordinates = await geocodeAddress([partner.address_line, partner.city, partner.state, partner.postal_code, partner.country]);
+    if (isValidCoordinates(coordinates)) {
+      await query('UPDATE rescue_partners SET latitude=?, longitude=?, geocode_status=?, geocoded_at=NOW(), geocode_error=NULL WHERE id=?', [coordinates.latitude, coordinates.longitude, GEOCODE_STATUSES.located, partner.id]);
+    } else {
+      await query('UPDATE rescue_partners SET geocode_status=?, geocode_error=? WHERE id=?', [GEOCODE_STATUSES.needsReview, 'No unambiguous geographic match was found for the saved address.', partner.id]);
+    }
+    return true;
+  } catch (err) {
+    console.error('[PetConnect organization geocoding]', err.message);
+    return false;
+  } finally {
+    partnerGeocodeWorkerActive = false;
+  }
+}
+
+function schedulePartnerGeocodeWorker(delay = 0) {
+  if (partnerGeocodeWorkerTimer) return;
+  partnerGeocodeWorkerTimer = setTimeout(async () => {
+    partnerGeocodeWorkerTimer = null;
+    const processed = await processPartnerGeocodeQueue();
+    schedulePartnerGeocodeWorker(processed ? 1000 : 60000);
+  }, delay);
+}
 
 // ── Landing Content Helpers ─────────────────────────────────────────────────
 async function getLandingContent() {
@@ -846,6 +886,14 @@ app.post('/api/admin/petconnect/partners/csv-import', requireAdmin, async (req, 
   }
   res.json({ inserted, errors, geocoding: 'Addresses were saved. Coordinates can be added later from the organization editor.' });
 });
+app.post('/api/admin/petconnect/partners/geocode-retry', requireAdmin, async (req, res) => {
+  const ids = [...new Set((req.body.partner_ids || []).map(Number).filter(Number.isInteger))];
+  if (!ids.length) return res.status(400).json({ error: 'Select at least one organization.' });
+  const placeholders = ids.map(() => '?').join(',');
+  const [result] = await pool.execute(`UPDATE rescue_partners SET latitude=NULL, longitude=NULL, geocode_status='pending', geocode_attempts=0, geocoded_at=NULL, geocode_error=NULL WHERE id IN (${placeholders})`, ids);
+  schedulePartnerGeocodeWorker();
+  res.json({ queued: result.affectedRows });
+});
 app.post('/api/admin/petconnect/partners/invite', requireAdmin, async (req, res) => {
   const ids = [...new Set((req.body.partner_ids || []).map(Number).filter(Number.isInteger))];
   const partners = ids.length ? await query('SELECT id, company_name, email FROM rescue_partners WHERE id IN (' + ids.map(() => '?').join(',') + ') AND is_active=FALSE', ids) : [];
@@ -855,8 +903,8 @@ app.post('/api/admin/petconnect/partners/invite', requireAdmin, async (req, res)
 });
 app.get('/api/admin/petconnect/partners', requireAdmin, async (req, res) => {
   const term = `%${String(req.query.search || '').trim()}%`;
-  const conditions = ['(rp.company_name LIKE ? OR rp.contact_name LIKE ? OR rp.email LIKE ? OR rp.city LIKE ? OR rp.state LIKE ?)'];
-  const params = [term, term, term, term, term];
+  const conditions = ['(rp.company_name LIKE ? OR rp.contact_name LIKE ? OR rp.email LIKE ? OR rp.address_line LIKE ? OR rp.city LIKE ? OR rp.state LIKE ? OR rp.postal_code LIKE ? OR rp.country LIKE ?)'];
+  const params = [term, term, term, term, term, term, term, term];
   if (req.query.partner_type_id && /^\d+$/.test(String(req.query.partner_type_id))) { conditions.push('rp.partner_type_id=?'); params.push(Number(req.query.partner_type_id)); }
   if (req.query.active === 'yes' || req.query.active === 'no') { conditions.push('rp.is_active=?'); params.push(req.query.active === 'yes'); }
   if (req.query.verified === 'yes' || req.query.verified === 'no') { conditions.push('rp.is_verified=?'); params.push(req.query.verified === 'yes'); }
@@ -864,15 +912,22 @@ app.get('/api/admin/petconnect/partners', requireAdmin, async (req, res) => {
   if (req.query.invite === 'uninvited') conditions.push('rp.invitation_sent_at IS NULL AND rp.is_verified=FALSE');
   if (req.query.invite === 'invited') conditions.push('rp.invitation_sent_at IS NOT NULL AND rp.is_verified=FALSE');
   if (req.query.invite === 'claimed') conditions.push('rp.is_verified=TRUE');
-  const partners = await query(`SELECT rp.*, pt.label AS type_label FROM rescue_partners rp JOIN partner_types pt ON pt.id=rp.partner_type_id WHERE ${conditions.join(' AND ')} ORDER BY rp.created_at DESC`, params);
-  res.json({ partners });
+  if (Object.values(GEOCODE_STATUSES).includes(req.query.geocode_status)) { conditions.push('rp.geocode_status=?'); params.push(req.query.geocode_status); }
+  const requestedPerPage = String(req.query.per_page || '50').toLowerCase();
+  const perPage = requestedPerPage === 'all' ? 5000 : [50, 100, 200].includes(Number(requestedPerPage)) ? Number(requestedPerPage) : 50;
+  const countRows = await query(`SELECT COUNT(*) AS total FROM rescue_partners rp JOIN partner_types pt ON pt.id=rp.partner_type_id WHERE ${conditions.join(' AND ')}`, params);
+  const total = Number(countRows[0].total || 0);
+  const pages = Math.max(1, Math.ceil(total / perPage));
+  const page = Math.min(pages, Math.max(1, Number.parseInt(req.query.page, 10) || 1));
+  const partners = await query(`SELECT rp.*, pt.label AS type_label FROM rescue_partners rp JOIN partner_types pt ON pt.id=rp.partner_type_id WHERE ${conditions.join(' AND ')} ORDER BY rp.created_at DESC LIMIT ? OFFSET ?`, [...params, perPage, (page - 1) * perPage]);
+  res.json({ partners, pagination: { page, perPage, total, pages } });
 });
 app.post('/api/admin/petconnect/partners', requireAdmin, async (req, res) => {
   const body = req.body || {};
   if (!body.partner_type_id || !body.company_name || !body.contact_name || !/^\S+@\S+\.\S+$/.test(String(body.email || '')) || !body.city) return res.status(400).json({ error: 'Type, organization, contact, email, and city are required.' });
   const country = body.country === 'CA' ? 'CA' : 'US';
-  const coords = await geocodeAddress([body.address_line, body.city, body.state, body.postal_code, country]);
-  const [result] = await pool.execute('INSERT INTO rescue_partners (partner_type_id, company_name, contact_name, email, phone, address_line, city, state, postal_code, country, latitude, longitude, website, is_active, is_verified) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [body.partner_type_id, String(body.company_name).trim(), String(body.contact_name).trim(), String(body.email).trim().toLowerCase(), String(body.phone || '').trim() || null, String(body.address_line || '').trim() || null, String(body.city).trim(), String(body.state || '').trim() || null, String(body.postal_code || '').trim() || null, country, coords && coords.latitude || null, coords && coords.longitude || null, String(body.website || '').trim() || null, body.is_active !== false, true]);
+  const [result] = await pool.execute('INSERT INTO rescue_partners (partner_type_id, company_name, contact_name, email, phone, address_line, city, state, postal_code, country, website, is_active, is_verified) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)', [body.partner_type_id, String(body.company_name).trim(), String(body.contact_name).trim(), String(body.email).trim().toLowerCase(), String(body.phone || '').trim() || null, String(body.address_line || '').trim() || null, String(body.city).trim(), String(body.state || '').trim() || null, String(body.postal_code || '').trim() || null, country, String(body.website || '').trim() || null, body.is_active !== false, true]);
+  schedulePartnerGeocodeWorker();
   res.status(201).json({ success: true, id: result.insertId });
 });
 app.patch('/api/admin/petconnect/partners/:id', requireAdmin, async (req, res) => {
@@ -882,8 +937,8 @@ app.patch('/api/admin/petconnect/partners/:id', requireAdmin, async (req, res) =
   const state = String(body.state || '').trim() || null;
   const country = body.country === 'CA' ? 'CA' : 'US';
   const postalCode = String(body.postal_code || '').trim() || null;
-  const coords = await geocodeAddress([addressLine, city, state, postalCode, country]);
-  await query('UPDATE rescue_partners SET company_name=?, contact_name=?, email=?, phone=?, address_line=?, city=?, state=?, postal_code=?, country=?, latitude=?, longitude=?, website=?, partner_type_id=?, is_active=? WHERE id=?', [String(body.company_name || '').trim(), String(body.contact_name || '').trim(), String(body.email || '').trim().toLowerCase(), String(body.phone || '').trim() || null, addressLine, city, state, postalCode, country, coords && coords.latitude || null, coords && coords.longitude || null, String(body.website || '').trim() || null, body.partner_type_id, body.is_active ? true : false, req.params.id]);
+  await query('UPDATE rescue_partners SET company_name=?, contact_name=?, email=?, phone=?, address_line=?, city=?, state=?, postal_code=?, country=?, latitude=NULL, longitude=NULL, geocode_status=\'pending\', geocode_attempts=0, geocoded_at=NULL, geocode_error=NULL, website=?, partner_type_id=?, is_active=? WHERE id=?', [String(body.company_name || '').trim(), String(body.contact_name || '').trim(), String(body.email || '').trim().toLowerCase(), String(body.phone || '').trim() || null, addressLine, city, state, postalCode, country, String(body.website || '').trim() || null, body.partner_type_id, body.is_active ? true : false, req.params.id]);
+  schedulePartnerGeocodeWorker();
   res.json({ success: true });
 });
 app.delete('/api/admin/petconnect/partners/:id', requireAdmin, async (req, res) => { await query('DELETE FROM rescue_partners WHERE id=?', [req.params.id]); res.json({ success: true }); });
