@@ -8,7 +8,7 @@ var state = {
   content: {},
   countries: [],
   airlines: [],
-  contracts: [], petconnect: { members: [], pets: [], alerts: [], partners: [], types: [], partnerSelection: {}, partnerPagination: { page: 1, perPage: 50, total: 0, pages: 1 } }
+  contracts: [], emailTemplates: [], selectedEmailTemplate: '', petconnect: { members: [], pets: [], alerts: [], partners: [], types: [], partnerSelection: {}, partnerPagination: { page: 1, perPage: 50, total: 0, pages: 1 } }
 };
 
 var toastTimeout;
@@ -54,6 +54,7 @@ function showSection(name) {
   if (name === 'quotes') loadQuotes();
   if (name === 'contacts') loadContacts();
   if (name === 'contracts') loadContracts();
+  if (name === 'email-center') loadEmailTemplates();
   if (name === 'petconnect-overview') loadPetConnectOverview();
   if (name === 'petconnect-members') loadPetConnectMembers();
   if (name === 'petconnect-pets') loadPetConnectPets();
@@ -63,6 +64,10 @@ function showSection(name) {
   if (name === 'countries') loadCountries();
   if (name === 'airlines') loadAirlines();
 }
+
+async function loadEmailTemplates() { try { var response=await fetch('/api/admin/email-templates',creds),data=await response.json();if(!response.ok)throw new Error(data.error||'Could not load email templates.');state.emailTemplates=data.templates||[];var list=document.getElementById('emailTemplateList');list.innerHTML=state.emailTemplates.map(function(t){return '<button class="email-template-item" onclick="previewEmailTemplate(\''+escHtml(t.id)+'\')">'+escHtml(t.label)+'</button>';}).join('');var health=await fetch('/api/admin/email-health',creds),status=await health.json(),target=document.getElementById('emailCenterHealth');target.textContent=status.success?'SMTP status: connected and authenticated.':'SMTP status: '+(status.error||'unavailable');target.className='email-center-health '+(status.success?'is-ok':'is-error');if(state.emailTemplates.length)previewEmailTemplate(state.selectedEmailTemplate||state.emailTemplates[0].id);}catch(error){showToast(error.message,'error');} }
+async function previewEmailTemplate(id) { try { var response=await fetch('/api/admin/email-templates/'+encodeURIComponent(id)+'/preview',creds),data=await response.json();if(!response.ok)throw new Error(data.error||'Could not load email preview.');state.selectedEmailTemplate=id;document.getElementById('emailTemplateSubject').textContent=data.subject;document.getElementById('emailTemplatePreview').srcdoc=data.html;document.getElementById('emailTemplateText').textContent=data.text;document.querySelectorAll('.email-template-item').forEach(function(button){button.classList.toggle('active',button.getAttribute('onclick').indexOf("'"+id+"'")>-1);});}catch(error){showToast(error.message,'error');} }
+async function sendEmailTemplateTest() { var email=document.getElementById('emailTemplateTestRecipient').value.trim(),id=state.selectedEmailTemplate;if(!id)return showToast('Choose an email template first.','error');try { var response=await fetch('/api/admin/email-templates/'+encodeURIComponent(id)+'/test',{...creds,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email})}),data=await response.json();if(!response.ok)throw new Error(data.error||'Template test failed.');showToast(data.message,'success');}catch(error){showToast(error.message,'error');} }
 
 function togglePetConnectNav() { var el=document.getElementById('petconnectSubnav'); if(el)el.classList.toggle('is-open'); }
 function pcValue(id) { var el=document.getElementById(id); return el ? el.value : ''; }

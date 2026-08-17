@@ -40,6 +40,9 @@
       <button class="nav-btn" data-section="contracts" onclick="showSection('contracts')">
         <i class="fas fa-file-signature"></i> Contracts
       </button>
+      <button class="nav-btn" data-section="email-center" onclick="showSection('email-center')">
+        <i class="fas fa-envelope-open-text"></i> Email Center
+      </button>
       <button class="nav-btn petconnect-parent" type="button" onclick="togglePetConnectNav()">
         <i class="fas fa-paw"></i> PetConnect <i class="fas fa-chevron-down pc-nav-chevron"></i>
       </button>
@@ -138,6 +141,12 @@
         <button class="btn-primary-sm" onclick="newContract()"><i class="fas fa-plus"></i> New Contract</button>
       </div>
       <div id="contractsTable"></div>
+    </section>
+
+    <section id="section-email-center" class="admin-section">
+      <div class="section-header"><h1>Email Center</h1><button class="btn-outline" onclick="loadEmailTemplates()"><i class="fas fa-sync"></i> Refresh</button></div>
+      <p id="emailCenterHealth" class="email-center-health">SMTP status: checking...</p>
+      <div class="email-center-grid"><div><div id="emailTemplateList" class="email-template-list"></div></div><div class="email-preview-panel"><p class="email-preview-label">Subject</p><h2 id="emailTemplateSubject">Choose a template</h2><iframe id="emailTemplatePreview" title="Email template preview" sandbox=""></iframe><details><summary>Plain-text fallback</summary><pre id="emailTemplateText"></pre></details><div class="email-test-row"><input id="emailTemplateTestRecipient" class="field-input" type="email" placeholder="Send test to email address"><button class="btn-primary-sm" onclick="sendEmailTemplateTest()"><i class="fas fa-paper-plane"></i> Send test</button></div></div></div>
     </section>
 
     <section id="section-petconnect-overview" class="admin-section"><div class="section-header"><h1>PetConnect Overview</h1><button class="btn-outline" onclick="loadPetConnectOverview()"><i class="fas fa-sync"></i> Refresh</button></div><p id="emailHealthStatus" style="margin:0 0 1rem;color:var(--text-muted);">SMTP status: checking...</p><div class="stats-row pc-summary-grid"><button class="stat-card pc-summary-card" onclick="showSection('petconnect-members')"><span class="stat-icon"><i class="fas fa-users"></i></span><span><span class="stat-num" id="pcSummaryMembers">0</span><span class="stat-lbl">Registered members</span><small id="pcSummaryMembersMeta">0 verified</small></span></button><button class="stat-card pc-summary-card" onclick="showSection('petconnect-pets')"><span class="stat-icon"><i class="fas fa-paw"></i></span><span><span class="stat-num" id="pcSummaryPets">0</span><span class="stat-lbl">Registered pets</span><small id="pcSummaryPetsMeta">0 missing</small></span></button><button class="stat-card pc-summary-card" onclick="showSection('petconnect-alerts')"><span class="stat-icon"><i class="fas fa-bullhorn"></i></span><span><span class="stat-num" id="pcSummaryAlerts">0</span><span class="stat-lbl">Missing-pet alerts</span><small id="pcSummaryAlertsMeta">0 active</small></span></button><button class="stat-card pc-summary-card" onclick="showSection('petconnect-partners')"><span class="stat-icon"><i class="fas fa-building"></i></span><span><span class="stat-num" id="pcSummaryPartners">0</span><span class="stat-lbl">Organizations</span><small id="pcSummaryPartnersMeta">0 active</small></span></button></div></section>

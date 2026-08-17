@@ -22,6 +22,7 @@ const { ensureUploadStorage, resolveUploadStorage, uploadFilePath } = require('.
 const { findPartnerType, normalizePartnerImportRow, parsePartnerCsv } = require('./lib/partner-csv');
 const { buildPartnerInsert } = require('./lib/partner-import');
 const { GEOCODE_STATUSES, isRetryableGeocodeError, isValidCoordinates, geocodeRetryDelaySeconds, nextGeocodeStatus } = require('./lib/partner-geocoding');
+const emailTemplates = require('./lib/email-templates');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -1402,6 +1403,47 @@ app.post('/api/admin/email-test', requireAdmin, async (req, res) => {
   const sent = await sendEmail(email, 'Pet Fly Inc email delivery test', '<p>This confirms that Pet Fly Inc can send email from its current SMTP configuration.</p>');
   if (!sent) return res.status(503).json({ success: false, error: lastEmailDeliveryError || 'SMTP_SEND_FAILED' });
   res.json({ success: true, message: 'Test email sent.' });
+});
+
+function emailTemplatePreview(id) {
+  const siteUrl = getSiteUrl();
+  const url = `${siteUrl}/example`;
+  const templates = {
+    quote_confirmation: ['Quote request confirmation', () => emailTemplates.quoteConfirmation({ name: 'Alex Morgan', siteUrl })],
+    contact_confirmation: ['Contact message confirmation', () => emailTemplates.contactConfirmation({ name: 'Alex Morgan', siteUrl })],
+    member_verification: ['PetConnect email verification', () => emailTemplates.memberVerification({ name: 'Alex Morgan', siteUrl, verifyUrl: url })],
+    contract_signed: ['Signed contract confirmation', () => emailTemplates.contractSigned({ contractNumber: 'PF-DEMO-1001', siteUrl })],
+    finder_message: ['PetConnect finder message', () => emailTemplates.finderMessage({ petName: 'Milo', finderName: 'Jordan Lee', finderEmail: 'jordan@example.com', finderPhone: '626-555-0198', message: 'I found Milo and would like to help.', siteUrl })],
+    lost_found_alert: ['PetConnect lost/found alert', () => emailTemplates.lostFoundAlert({ petName: 'Milo', alertType: 'lost', location: 'Los Angeles, CA', alertUrl: url, siteUrl })],
+    partner_verification: ['Partner verification', () => emailTemplates.partnerVerification({ claimUrl: url, siteUrl })],
+    partner_invitation: ['Partner invitation', () => emailTemplates.partnerInvitation({ organizationName: 'Care Clinic', claimUrl: url, siteUrl })],
+    portal_access: ['Client portal access', () => emailTemplates.portalAccess({ loginUrl: url, initialPassword: 'Example-password', siteUrl })],
+    internal_quote: ['Internal quote notification', () => emailTemplates.internalQuoteNotification({ name: 'Alex Morgan', email: 'alex@example.com', details: [['Pet', 'Milo'], ['Route', 'Los Angeles to Toronto']], siteUrl })],
+    internal_contact: ['Internal contact notification', () => emailTemplates.internalContactNotification({ name: 'Alex Morgan', email: 'alex@example.com', subject: 'Travel question', message: 'Please contact me about my pet relocation.', siteUrl })],
+    smtp_test: ['SMTP delivery test', () => emailTemplates.smtpTest({ siteUrl })]
+  };
+  return templates[id] || null;
+}
+
+app.get('/api/admin/email-templates', requireAdmin, (req, res) => {
+  const ids = ['quote_confirmation','contact_confirmation','member_verification','contract_signed','finder_message','lost_found_alert','partner_verification','partner_invitation','portal_access','internal_quote','internal_contact','smtp_test'];
+  res.json({ templates: ids.map(id => ({ id, label: emailTemplatePreview(id)[0] })) });
+});
+app.get('/api/admin/email-templates/:id/preview', requireAdmin, (req, res) => {
+  const entry = emailTemplatePreview(req.params.id);
+  if (!entry) return res.status(404).json({ success: false, error: 'Unknown email template.' });
+  const message = entry[1]();
+  res.json({ success: true, subject: message.subject, html: message.html, text: message.text });
+});
+app.post('/api/admin/email-templates/:id/test', requireAdmin, async (req, res) => {
+  const entry = emailTemplatePreview(req.params.id);
+  const email = String(req.body.email || '').trim().toLowerCase();
+  if (!entry) return res.status(404).json({ success: false, error: 'Unknown email template.' });
+  if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ success: false, error: 'Enter a valid recipient email.' });
+  const message = entry[1]();
+  const sent = await sendEmail(email, message.subject, message.html);
+  if (!sent) return res.status(503).json({ success: false, error: lastEmailDeliveryError || 'SMTP_SEND_FAILED' });
+  res.json({ success: true, message: 'Template test email sent.' });
 });
 
 // Admin SPA
