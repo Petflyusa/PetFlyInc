@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const { quoteConfirmation, memberVerification } = require('../lib/email-templates');
 
 test('quote confirmation uses branded, safe email content', () => {
@@ -25,4 +27,11 @@ test('member verification includes its action link in HTML and text', () => {
 
   assert.match(email.html, /href="https:\/\/petflyinc\.com\/member\/verify\?token=abc123"/);
   assert.match(email.text, /https:\/\/petflyinc\.com\/member\/verify\?token=abc123/);
+});
+
+test('publishes the email header logo asset', () => {
+  const logoPath = path.join(__dirname, '..', 'public', 'images', 'petfly-email-logo.png');
+
+  assert.ok(fs.existsSync(logoPath), 'email header logo should be publicly available');
+  assert.ok(fs.statSync(logoPath).size > 0, 'email header logo should not be empty');
 });
