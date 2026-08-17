@@ -986,8 +986,16 @@ app.post('/api/admin/petconnect/partners/invite', requireAdmin, async (req, res)
   const ids = [...new Set((req.body.partner_ids || []).map(Number).filter(Number.isInteger))];
   const partners = ids.length ? await query('SELECT id, company_name, email FROM rescue_partners WHERE id IN (' + ids.map(() => '?').join(',') + ') AND is_active=FALSE', ids) : [];
   let invited = 0;
-  for (const partner of partners) { const token = crypto.randomBytes(32).toString('hex'); await query('UPDATE rescue_partners SET verify_token=?, invitation_sent_at=NOW(), invitation_expires_at=DATE_ADD(NOW(), INTERVAL 14 DAY) WHERE id=?', [token, partner.id]); await sendEmail(partner.email, 'Join PetConnect', `<p>${escapeHtml(partner.company_name)}, <a href="${getSiteUrl()}/partner/claim/${token}">set your PetConnect password</a>.</p>`); invited += 1; }
-  res.json({ invited });
+  const failures = [];
+  for (const partner of partners) {
+    const token = crypto.randomBytes(32).toString('hex');
+    const message = emailTemplates.partnerInvitation({ organizationName: partner.company_name, claimUrl: `${getSiteUrl()}/partner/claim/${token}`, siteUrl: getSiteUrl() });
+    const sent = await sendEmail(partner.email, message.subject, message.html);
+    if (!sent) { failures.push(partner.email); continue; }
+    await query('UPDATE rescue_partners SET verify_token=?, invitation_sent_at=NOW(), invitation_expires_at=DATE_ADD(NOW(), INTERVAL 14 DAY) WHERE id=?', [token, partner.id]);
+    invited += 1;
+  }
+  res.json({ selected: ids.length, invited, failed: failures.length, failed_emails: failures.slice(0, 10), skipped: ids.length - partners.length });
 });
 app.get('/api/admin/petconnect/partners', requireAdmin, async (req, res) => {
   const term = `%${String(req.query.search || '').trim()}%`;

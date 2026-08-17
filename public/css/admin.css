@@ -406,6 +406,10 @@ label.field-label {
 .pc-summary-card small { display: block; color: var(--text-muted); margin-top: 0.25rem; }
 .pc-bulkbar { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; margin-bottom: 1rem; }
 .pc-bulkbar span { color: var(--text-muted); font-size: 0.85rem; }
+.partner-invite-progress { display:flex; align-items:center; gap:.7rem; margin:-.35rem 0 1rem; color:var(--cream); font-size:.85rem; }
+.partner-invite-progress__bar { width:140px; height:4px; overflow:hidden; background:rgba(247,245,240,.16); }
+.partner-invite-progress__bar span { display:block; width:45%; height:100%; background:var(--accent); animation:partnerInviteProgress 1s ease-in-out infinite; }
+@keyframes partnerInviteProgress { from { transform:translateX(-120%); } to { transform:translateX(320%); } }
 .csv-review { display: grid; gap: 0.6rem; padding: 1rem; margin-bottom: 1rem; background: var(--surface); border: 1px solid var(--border); }
 .csv-review label { font-size: 0.85rem; }
 .pc-pagination { display: flex; justify-content: space-between; gap: 0.75rem; align-items: center; margin-top: 1rem; color: var(--text-muted); font-size: 0.85rem; }
