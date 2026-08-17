@@ -997,7 +997,7 @@ app.post('/api/admin/petconnect/partners/invite', requireAdmin, async (req, res)
       await query('UPDATE rescue_partners SET verify_token=?, invitation_sent_at=NOW(), invitation_expires_at=DATE_ADD(NOW(), INTERVAL 14 DAY) WHERE id=?', [token, partner.id]);
       invited += 1;
     }
-    res.json({ selected: ids.length, invited, failed: failures.length, failed_emails: failures.slice(0, 10), skipped: ids.length - partners.length });
+    res.json({ selected: ids.length, invited, failed: failures.length, failed_emails: failures.slice(0, 10), skipped: ids.length - partners.length, delivery_error: failures.length ? lastEmailDeliveryError : null });
   } catch (err) {
     console.error('[PetConnect invitation]', err);
     res.status(500).json({ error: 'Unable to send invitations. Check SMTP status and server log.' });
