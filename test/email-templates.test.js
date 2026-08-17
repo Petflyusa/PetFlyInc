@@ -58,3 +58,12 @@ test('all fixed email templates render a branded HTML and text message', () => {
     assert.ok(email.text);
   }
 });
+
+test('partner invitation explains the free local lost-and-found service', () => {
+  const email = templates.partnerInvitation({ organizationName: 'Care Clinic', claimUrl: 'https://petflyinc.com/partner/claim/example', siteUrl: 'https://petflyinc.com' });
+  assert.match(email.subject, /reunite lost pets/i);
+  assert.match(email.html, /no platform fees or subscription charges/i);
+  assert.match(email.html, /nearby missing-pet alerts/i);
+  assert.match(email.html, /post a found-pet alert/i);
+  assert.match(email.html, /Join PetConnect for free/i);
+});
