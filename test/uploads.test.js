@@ -60,3 +60,11 @@ test('moves legacy deployment uploads into persistent storage', () => {
   assert.equal(uploadFilePath(storage.uploadDir, '/uploads/../../etc/passwd'), null);
   fs.rmSync(temporaryRoot, { recursive: true, force: true });
 });
+
+test('database upload migration is included in startup migration list', () => {
+  const database = fs.readFileSync(path.join(__dirname, '..', 'lib', 'petconnect-database.js'), 'utf8');
+  const migration = fs.readFileSync(path.join(__dirname, '..', 'migrations', '009_uploaded_files.sql'), 'utf8');
+  assert.match(database, /009_uploaded_files\.sql/);
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS uploaded_files/i);
+  assert.match(migration, /file_data LONGBLOB NOT NULL/i);
+});

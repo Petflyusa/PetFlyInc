@@ -19,6 +19,7 @@ const { generateContractPdf } = require('./lib/contract-pdf');
 const { documentCategories, documentExpiryStatus, isActiveRelocation, normalizeYouTubeUrl, relocationSteps } = require('./lib/portal');
 const { defaultFooter } = require('./lib/site');
 const { ensureUploadStorage, resolveUploadStorage, uploadFilePath } = require('./lib/uploads');
+const { persistUploadedFile } = require('./lib/database-files');
 const { findPartnerType, normalizePartnerImportRow, parsePartnerCsv } = require('./lib/partner-csv');
 const { buildPartnerInsert } = require('./lib/partner-import');
 const { GEOCODE_STATUSES, isRetryableGeocodeError, isValidCoordinates, geocodeRetryDelaySeconds, nextGeocodeStatus } = require('./lib/partner-geocoding');
@@ -143,6 +144,14 @@ app.use(compression());
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 app.use('/uploads', express.static(uploadDir));
+app.get('/uploads/db/:storageKey', async (req, res) => {
+  if (!/^[0-9a-f-]{36}$/i.test(req.params.storageKey)) return res.sendStatus(404);
+  try {
+    const [rows] = await pool.execute('SELECT mime_type, file_data FROM uploaded_files WHERE storage_key=? LIMIT 1', [req.params.storageKey]);
+    if (!rows.length) return res.sendStatus(404);
+    res.type(rows[0].mime_type).set('Cache-Control', 'public, max-age=31536000, immutable').send(rows[0].file_data);
+  } catch (err) { console.error('[Upload retrieval]', err); res.sendStatus(404); }
+});
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/admin', express.static(path.join(__dirname, 'admin')));
 
@@ -597,7 +606,7 @@ app.post('/api/petconnect/pets', requireMember, (req, res, next) => {
   if (!petName || !['Dog', 'Cat', 'Bird', 'Other'].includes(species) || !['Male', 'Female', 'Unknown'].includes(gender)) return res.redirect('/dashboard?pet_error=Enter a valid pet name, species, and gender.');
   if (microchip && !/^\d{9,15}$/.test(microchip)) return res.redirect('/dashboard?pet_error=Microchip numbers must contain 9 to 15 digits.');
   try {
-    const photoFilename = req.file ? `/uploads/pets/${req.file.filename}` : null;
+    const photoFilename = req.file ? await persistUploadedFile(pool, req.file, 'pet-photo') : null;
     await query('INSERT INTO registered_pets (member_id, microchip_number, pet_name, species, breed, color, gender, birth_date, photo_filename, notes) VALUES (?,?,?,?,?,?,?,?,?,?)', [req.session.memberId, microchip || null, petName, species, String(req.body.breed || '').trim() || null, String(req.body.color || '').trim() || null, gender, req.body.birth_date || null, photoFilename, String(req.body.notes || '').trim() || null]);
     res.redirect('/dashboard');
   } catch (err) {
@@ -646,7 +655,7 @@ app.post('/api/petconnect/pets/:id', requireMember, (req, res, next) => {
     }
     const currentPhoto = pets[0].photo_filename;
     const shouldRemovePhoto = req.body.remove_photo === 'on';
-    const photoFilename = req.file ? `/uploads/pets/${req.file.filename}` : shouldRemovePhoto ? null : currentPhoto;
+    const photoFilename = req.file ? await persistUploadedFile(pool, req.file, 'pet-photo') : shouldRemovePhoto ? null : currentPhoto;
     await query('UPDATE registered_pets SET microchip_number=?, pet_name=?, species=?, breed=?, color=?, gender=?, birth_date=?, photo_filename=?, notes=? WHERE id=? AND member_id=?', [microchip || null, petName, species, String(req.body.breed || '').trim() || null, String(req.body.color || '').trim() || null, gender, req.body.birth_date || null, photoFilename, String(req.body.notes || '').trim() || null, req.params.id, req.session.memberId]);
     if (currentPhoto && photoFilename !== currentPhoto) {
       const photoPath = uploadFilePath(uploadDir, currentPhoto);
@@ -736,7 +745,8 @@ app.post('/dashboard/missing/new', requireMember, (req, res, next) => {
     const city = String(req.body.last_seen_city || '').trim();
     const state = String(req.body.last_seen_state || '').trim();
     const coordinates = await geocodeAddress([location, city, state, country]);
-    const [result] = await pool.execute(`INSERT INTO missing_alerts (pet_id, member_id, alert_type, last_seen_location, last_seen_city, last_seen_state, last_seen_country, last_seen_latitude, last_seen_longitude, last_seen_date, search_radius, radius_unit, contact_info, reward, description, photo_filename) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [petId, req.session.memberId, alertType, location || null, city || null, state || null, country, coordinates && coordinates.latitude || null, coordinates && coordinates.longitude || null, req.body.last_seen_date || null, radius, unit, String(req.body.contact_info || '').trim() || null, String(req.body.reward || '').trim() || null, String(req.body.description || '').trim() || null, req.file ? `/uploads/pets/${req.file.filename}` : null]);
+    const alertPhoto = req.file ? await persistUploadedFile(pool, req.file, 'alert-photo') : null;
+    const [result] = await pool.execute(`INSERT INTO missing_alerts (pet_id, member_id, alert_type, last_seen_location, last_seen_city, last_seen_state, last_seen_country, last_seen_latitude, last_seen_longitude, last_seen_date, search_radius, radius_unit, contact_info, reward, description, photo_filename) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [petId, req.session.memberId, alertType, location || null, city || null, state || null, country, coordinates && coordinates.latitude || null, coordinates && coordinates.longitude || null, req.body.last_seen_date || null, radius, unit, String(req.body.contact_info || '').trim() || null, String(req.body.reward || '').trim() || null, String(req.body.description || '').trim() || null, alertPhoto]);
     if (alertType === 'lost') await query('UPDATE registered_pets SET is_missing=TRUE WHERE id=?', [petId]);
     const alert = { id: result.insertId, member_id: req.session.memberId, alert_type: alertType, last_seen_location: location, last_seen_city: city, last_seen_state: state, last_seen_country: country, last_seen_latitude: coordinates && coordinates.latitude, last_seen_longitude: coordinates && coordinates.longitude, last_seen_date: req.body.last_seen_date, search_radius: radius, radius_unit: unit, description: String(req.body.description || '').trim() };
     sendAlertNotifications(alert, pets[0]).catch(err => console.error('[PetConnect alert delivery]', err));
@@ -1518,13 +1528,10 @@ app.get('/api/admin/contracts', requireAdmin, async (req, res) => {
 });
 
 app.post('/api/admin/contract-photos', requireAdmin, contractPhotoUpload.array('photos', 5), async (req, res) => {
-  const photos = (req.files || []).map(file => {
-    const mime = file.mimetype === 'image/png' ? 'png' : file.mimetype === 'image/webp' ? 'webp' : 'jpeg';
-    return `data:image/${mime};base64,${fs.readFileSync(file.path).toString('base64')}`;
-  });
-  if (!photos.length) return res.status(400).json({ error: 'Upload up to five JPG, PNG, or WebP pet photos.' });
+  if (!(req.files || []).length) return res.status(400).json({ error: 'Upload up to five JPG, PNG, or WebP pet photos.' });
   const contractId = Number.parseInt(req.body.contract_id, 10);
   try {
+    const photos = await Promise.all(req.files.map(file => persistUploadedFile(pool, file, 'contract-photo')));
     if (contractId) {
       const rows = await query('SELECT contract_data FROM contracts WHERE id=?', [contractId]);
       if (!rows.length) return res.status(404).json({ error: 'Contract not found.' });
@@ -1693,7 +1700,7 @@ app.post('/api/admin/contracts/:id/documents', requireAdmin, relocationDocumentU
   if (!label) return res.status(400).json({ error: 'Document label is required.' });
   try {
     if (!await contractExists(req.params.id)) return res.status(404).json({ error: 'Contract not found.' });
-    const fileUrl = req.file ? `/uploads/${req.file.filename}` : null;
+    const fileUrl = req.file ? await persistUploadedFile(pool, req.file, 'relocation-document') : null;
     const [result] = await pool.execute('INSERT INTO relocation_documents (contract_id, category, label, file_url, issued_on, expires_on) VALUES (?,?,?,?,?,?)', [req.params.id, category, label, fileUrl, req.body.issued_on || null, req.body.expires_on || null]);
     res.status(201).json({ success: true, id: result.insertId, file_url: fileUrl });
   } catch (err) { sendContractDatabaseError(res, err); }
