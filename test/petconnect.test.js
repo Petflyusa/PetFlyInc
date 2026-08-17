@@ -86,7 +86,7 @@ test('PetConnect completes public alerts, member locations, and administrator ma
   assert.match(server, /app\.get\('\/api\/admin\/petconnect\/partners'/);
   assert.match(server, /app\.get\('\/api\/admin\/petconnect\/alerts'/);
   assert.match(registry, /name="species"/);
-  assert.match(registry, /petconnect-globe/);
+  assert.doesNotMatch(registry, /petconnect-globe/);
   assert.match(admin, /PetConnect/);
 });
 
