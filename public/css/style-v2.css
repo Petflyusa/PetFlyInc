@@ -419,6 +419,8 @@ button { cursor: pointer; font-family: inherit; }
   color: var(--charcoal);
 }
 .service-item p { font-size: 0.9375rem; color: var(--text-muted); line-height: 1.65; }
+.service-item-link { display:block; text-decoration:none; color:inherit; }
+.service-item-link__action { display:inline-flex; align-items:center; gap:0.45rem; margin-top:var(--space-md); color:var(--accent); font-size:0.75rem; letter-spacing:0.06em; text-transform:uppercase; }
 
 /* ── Content Block (text + image) ── */
 .content-block {

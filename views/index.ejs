@@ -70,6 +70,14 @@
             <p><%= svc.desc %></p>
           </div>
         <% }); %>
+        <% if (!svcs.some(svc => String(svc.title || '').toLowerCase() === 'petconnect')) { %>
+          <a class="service-item service-item-link" href="/registry">
+            <div class="service-icon"><i class="fas fa-paw"></i></div>
+            <h3>PetConnect</h3>
+            <p>A free community network that helps reunite lost pets with their families through private microchip contact, local alerts, and trusted partner support.</p>
+            <span class="service-item-link__action">Explore PetConnect <i class="fas fa-arrow-right" aria-hidden="true"></i></span>
+          </a>
+        <% } %>
       </div>
     </div>
   </section>
