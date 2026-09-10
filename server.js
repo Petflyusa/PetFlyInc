@@ -24,9 +24,15 @@ const { findPartnerType, normalizePartnerImportRow, parsePartnerCsv } = require(
 const { buildPartnerInsert } = require('./lib/partner-import');
 const { GEOCODE_STATUSES, isRetryableGeocodeError, isValidCoordinates, geocodeRetryDelaySeconds, nextGeocodeStatus } = require('./lib/partner-geocoding');
 const emailTemplates = require('./lib/email-templates');
+const { createTtlCache } = require('./lib/ttl-cache');
+const { createRateLimiter } = require('./lib/request-rate-limit');
+const { enqueueEmail, processNextEmail } = require('./lib/email-queue');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const contentCache = createTtlCache();
+const publicFormRateLimiter = createRateLimiter();
+const contentCacheTtlMs = 5 * 60 * 1000;
 const uploadStorage = resolveUploadStorage({
   appDir: __dirname,
   configuredDir: process.env.UPLOAD_DIR,
@@ -84,6 +90,41 @@ async function sendEmail(to, subject, htmlContent, attachments = []) {
   }
 }
 
+async function queueEmail({ to, subject, html, text = '', attachments = [] }) {
+  try {
+    await enqueueEmail(pool, { to, subject, html, text, attachments });
+    scheduleEmailQueueWorker(0);
+    return true;
+  } catch (err) {
+    console.error('[Email queue] Could not queue email:', err.message);
+    return false;
+  }
+}
+
+let emailQueueTimer = null;
+let emailQueueRunning = false;
+async function processEmailQueue() {
+  if (emailQueueRunning) return false;
+  emailQueueRunning = true;
+  try {
+    return await processNextEmail(pool, async email => sendEmail(email.to, email.subject, email.html, email.attachments));
+  } catch (err) {
+    console.error('[Email queue] Worker failed:', err.message);
+    return false;
+  } finally {
+    emailQueueRunning = false;
+  }
+}
+
+function scheduleEmailQueueWorker(delay = 30_000) {
+  if (emailQueueTimer) clearTimeout(emailQueueTimer);
+  emailQueueTimer = setTimeout(async () => {
+    emailQueueTimer = null;
+    const processed = await processEmailQueue();
+    scheduleEmailQueueWorker(processed ? 250 : 30_000);
+  }, delay);
+}
+
 async function sendPetConnectVerificationEmail(email, token) {
   const verifyUrl = `${getSiteUrl()}/verify/${token}`;
   return sendEmail(email, 'Verify your PetConnect account', `<p>Welcome to PetConnect.</p><p><a href="${verifyUrl}">Verify your email address</a> to activate your account.</p>`);
@@ -110,12 +151,19 @@ const pool = mysql.createPool({
 Promise.all([ensureContractSchema(pool), ensureQuoteSchema(pool), ensurePetConnectSchema(pool)]).then(() => {
   console.log('[Contract database] Schema ready');
   schedulePartnerGeocodeWorker();
+  scheduleEmailQueueWorker(0);
 }).catch(err => {
   console.error('[Contract database] Schema setup failed:', err.message);
 });
 
 async function getConnection() { return pool.getConnection(); }
-async function query(sql, params) { const [rows] = await pool.execute(sql, params); return rows; }
+async function query(sql, params) {
+  const startedAt = Date.now();
+  const [rows] = await pool.execute(sql, params);
+  const elapsedMs = Date.now() - startedAt;
+  if (elapsedMs >= Number(process.env.DB_SLOW_QUERY_MS || 750)) console.warn('[Database] Slow query', { elapsedMs, sql: sql.slice(0, 120) });
+  return rows;
+}
 
 // ── Session Store ──────────────────────────────────────────────────────────
 const sessionStore = new MySQLStore({
@@ -135,7 +183,7 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com'],
-      connectSrc: ["'self'", 'https://clients5.google.com'],
+      connectSrc: ["'self'"],
       scriptSrcAttr: ["'unsafe-inline'"]
     }
   }
@@ -143,6 +191,10 @@ app.use(helmet({
 app.use(compression());
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+app.use((req, res, next) => {
+  res.locals.canonicalUrl = `${getSiteUrl()}${req.path === '/' ? '/' : req.path}`;
+  next();
+});
 app.use('/uploads', express.static(uploadDir));
 app.get('/uploads/db/:storageKey', async (req, res) => {
   if (!/^[0-9a-f-]{36}$/i.test(req.params.storageKey)) return res.sendStatus(404);
@@ -154,6 +206,7 @@ app.get('/uploads/db/:storageKey', async (req, res) => {
 });
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/admin', express.static(path.join(__dirname, 'admin')));
+app.get('/favicon.ico', (req, res) => res.redirect(301, '/favicon.png'));
 
 // Session
 app.use(session({
@@ -325,20 +378,26 @@ function schedulePartnerGeocodeWorker(delay = 0) {
 
 // ── Landing Content Helpers ─────────────────────────────────────────────────
 async function getLandingContent() {
+  const cached = contentCache.get('landing-content');
+  if (cached) return cached;
   const rows = await query('SELECT section_key, content FROM landing_content');
   const content = {};
   rows.forEach(row => {
     try { content[row.section_key] = JSON.parse(row.content); }
     catch { content[row.section_key] = row.content; }
   });
-  return content;
+  return contentCache.set('landing-content', content, contentCacheTtlMs);
 }
 
 async function getLandingSection(key) {
+  const cached = contentCache.get(`landing-section:${key}`);
+  if (cached !== undefined) return cached;
   const rows = await query('SELECT content FROM landing_content WHERE section_key = ?', [key]);
-  if (!rows.length) return null;
-  try { return JSON.parse(rows[0].content); }
-  catch { return rows[0].content; }
+  const content = !rows.length ? null : (() => {
+    try { return JSON.parse(rows[0].content); }
+    catch { return rows[0].content; }
+  })();
+  return contentCache.set(`landing-section:${key}`, content, contentCacheTtlMs);
 }
 
 async function getFooter() {
@@ -352,6 +411,24 @@ async function setLandingSection(key, data) {
     'INSERT INTO landing_content (section_key, content) VALUES (?, ?) ON DUPLICATE KEY UPDATE content = VALUES(content)',
     [key, json]
   );
+  contentCache.delete('landing-content');
+  contentCache.delete(`landing-section:${key}`);
+}
+
+async function getRegulationLists() {
+  const cached = contentCache.get('regulation-lists');
+  if (cached) return cached;
+  const [countries, airlines] = await Promise.all([
+    query('SELECT id, country_name FROM countries ORDER BY country_name'),
+    query('SELECT id, airline_name FROM airlines ORDER BY airline_name')
+  ]);
+  return contentCache.set('regulation-lists', { countries, airlines }, contentCacheTtlMs);
+}
+
+function invalidateRegulationLists() { contentCache.delete('regulation-lists'); }
+
+function allowPublicForm(req, formName, limit = 5) {
+  return publicFormRateLimiter.allow(`${formName}:${req.ip}`, limit, 60 * 60 * 1000);
 }
 
 // ── View Helpers ─────────────────────────────────────────────────────────────
@@ -391,9 +468,7 @@ app.get('/contact', async (req, res) => {
 // Regulations
 app.get('/regulations', async (req, res) => {
   try {
-    const countries = await query('SELECT id, country_name FROM countries ORDER BY country_name');
-    const airlines = await query('SELECT id, airline_name FROM airlines ORDER BY airline_name');
-    const footer = await getFooter();
+    const [{ countries, airlines }, footer] = await Promise.all([getRegulationLists(), getFooter()]);
     res.render('regulations', { countries, airlines, footer });
   } catch (err) {
     console.error(err);
@@ -1004,9 +1079,14 @@ app.post('/api/admin/petconnect/partners/invite', requireAdmin, async (req, res)
   }
 });
 app.get('/api/admin/petconnect/partners', requireAdmin, async (req, res) => {
-  const term = `%${String(req.query.search || '').trim()}%`;
-  const conditions = ['(rp.company_name LIKE ? OR rp.contact_name LIKE ? OR rp.email LIKE ? OR rp.address_line LIKE ? OR rp.city LIKE ? OR rp.state LIKE ? OR rp.postal_code LIKE ? OR rp.country LIKE ?)'];
-  const params = [term, term, term, term, term, term, term, term];
+  const search = String(req.query.search || '').trim();
+  const term = `%${search}%`;
+  const conditions = [];
+  const params = [];
+  if (search) {
+    conditions.push('(rp.company_name LIKE ? OR rp.contact_name LIKE ? OR rp.email LIKE ? OR rp.address_line LIKE ? OR rp.city LIKE ? OR rp.state LIKE ? OR rp.postal_code LIKE ? OR rp.country LIKE ?)');
+    params.push(term, term, term, term, term, term, term, term);
+  }
   if (req.query.partner_type_id && /^\d+$/.test(String(req.query.partner_type_id))) { conditions.push('rp.partner_type_id=?'); params.push(Number(req.query.partner_type_id)); }
   if (req.query.active === 'yes' || req.query.active === 'no') { conditions.push('rp.is_active=?'); params.push(req.query.active === 'yes'); }
   if (req.query.verified === 'yes' || req.query.verified === 'no') { conditions.push('rp.is_verified=?'); params.push(req.query.verified === 'yes'); }
@@ -1017,11 +1097,12 @@ app.get('/api/admin/petconnect/partners', requireAdmin, async (req, res) => {
   if (Object.values(GEOCODE_STATUSES).includes(req.query.geocode_status)) { conditions.push('rp.geocode_status=?'); params.push(req.query.geocode_status); }
   const requestedPerPage = String(req.query.per_page || '50').toLowerCase();
   const perPage = requestedPerPage === 'all' ? 5000 : [50, 100, 200].includes(Number(requestedPerPage)) ? Number(requestedPerPage) : 50;
-  const countRows = await query(`SELECT COUNT(*) AS total FROM rescue_partners rp JOIN partner_types pt ON pt.id=rp.partner_type_id WHERE ${conditions.join(' AND ')}`, params);
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  const countRows = await query(`SELECT COUNT(*) AS total FROM rescue_partners rp JOIN partner_types pt ON pt.id=rp.partner_type_id ${where}`, params);
   const total = Number(countRows[0].total || 0);
   const pages = Math.max(1, Math.ceil(total / perPage));
   const page = Math.min(pages, Math.max(1, Number.parseInt(req.query.page, 10) || 1));
-  const partners = await query(`SELECT rp.*, pt.label AS type_label FROM rescue_partners rp JOIN partner_types pt ON pt.id=rp.partner_type_id WHERE ${conditions.join(' AND ')} ORDER BY rp.created_at DESC LIMIT ? OFFSET ?`, [...params, perPage, (page - 1) * perPage]);
+  const partners = await query(`SELECT rp.*, pt.label AS type_label FROM rescue_partners rp JOIN partner_types pt ON pt.id=rp.partner_type_id ${where} ORDER BY rp.created_at DESC, rp.id DESC LIMIT ? OFFSET ?`, [...params, perPage, (page - 1) * perPage]);
   res.json({ partners, pagination: { page, perPage, total, pages } });
 });
 app.post('/api/admin/petconnect/partners', requireAdmin, async (req, res) => {
@@ -1106,12 +1187,24 @@ app.get('/api/portal/relocations', requirePortalAccount, async (req, res) => {
   try {
     const contracts = await query(`SELECT c.id, c.contract_number, c.contract_data FROM client_contracts cc JOIN contracts c ON c.id=cc.contract_id
       WHERE cc.client_account_id=? AND c.status <> 'draft' ORDER BY c.created_at DESC`, [req.session.clientAccountId]);
-    const relocations = await Promise.all(contracts.map(async contract => {
+    const contractIds = contracts.map(contract => contract.id);
+    const updates = contractIds.length ? await query(
+      `SELECT ru.contract_id, ru.status_step FROM relocation_updates ru
+       WHERE ru.contract_id IN (${contractIds.map(() => '?').join(',')})
+         AND NOT EXISTS (
+           SELECT 1 FROM relocation_updates newer
+           WHERE newer.contract_id=ru.contract_id
+             AND (newer.occurred_at > ru.occurred_at OR (newer.occurred_at=ru.occurred_at AND newer.id > ru.id))
+         )`,
+      contractIds
+    ) : [];
+    const latestUpdateByContract = new Map(updates.map(update => [update.contract_id, update]));
+    const relocations = contracts.map(contract => {
       const data = typeof contract.contract_data === 'string' ? JSON.parse(contract.contract_data) : contract.contract_data;
-      const updates = await query('SELECT status_step, occurred_at FROM relocation_updates WHERE contract_id=? ORDER BY occurred_at DESC, id DESC LIMIT 1', [contract.id]);
-      const currentStatus = updates[0] ? updates[0].status_step : (contract.status === 'signed' ? 'Contract Signed' : 'Consulting');
+      const update = latestUpdateByContract.get(contract.id);
+      const currentStatus = update ? update.status_step : (contract.status === 'signed' ? 'Contract Signed' : 'Consulting');
       return { id: contract.id, contract_number: contract.contract_number, pet_name: data.animal && data.animal.name || 'Pet', route: [data.travel && data.travel.departure_city, data.travel && data.travel.arrival_city].filter(Boolean).join(' to '), current_status: currentStatus, active: isActiveRelocation(currentStatus) };
-    }));
+    });
     res.json({ relocations });
   } catch (err) { sendContractDatabaseError(res, err); }
 });
@@ -1139,16 +1232,14 @@ app.get('/api/portal/relocations/:contractId', requirePortalAccount, async (req,
 // Countries list (for regulations page)
 app.get('/api/countries', async (req, res) => {
   try {
-    const countries = await query('SELECT id, country_name FROM countries ORDER BY country_name');
-    res.json({ countries });
+    res.json(await getRegulationLists());
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // Airlines list
 app.get('/api/airlines', async (req, res) => {
   try {
-    const airlines = await query('SELECT id, airline_name FROM airlines ORDER BY airline_name');
-    res.json({ airlines });
+    res.json(await getRegulationLists());
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -1240,6 +1331,7 @@ app.post('/api/quote', async (req, res) => {
   if (fax_only || email_addr) return res.json({ success: true }); // fake success to bots
 
   if (!contact_name || !email) return res.status(400).json({ success: false, message: 'Name and email are required.' });
+  if (!allowPublicForm(req, 'quote')) return res.status(429).json({ success: false, message: 'Too many quote requests. Please try again later.' });
 
   try {
     await query(
@@ -1254,64 +1346,22 @@ app.post('/api/quote', async (req, res) => {
        pickup_delivery ? true : null, pickup_address||null, delivery_address||null, notes||null]
     );
 
-    // Send email notification to admin
-    const petDetails = [
-      pet_type || 'Dog',
-      pet_name ? `Name: ${pet_name}` : null,
-      breed ? `Breed: ${breed}` : null,
-      pet_color ? `Color: ${pet_color}` : null,
-      pet_gender ? `Gender: ${pet_gender}` : null,
-      pet_dob ? `DOB: ${pet_dob}` : null,
-      microchip ? `Microchip: ${microchip}` : null,
-      pet_weight ? `Weight: ${pet_weight}` : null,
-    ].filter(Boolean).join(' | ');
-
-    let pickupInfo = '';
-    if (pickup_delivery) {
-      pickupInfo = `<p><strong>Pickup &amp; Delivery:</strong> Requested</p>` +
-        (pickup_address ? `<p><strong>Pickup Address:</strong> ${pickup_address}</p>` : '') +
-        (delivery_address ? `<p><strong>Delivery Address:</strong> ${delivery_address}</p>` : '');
-    }
-
-    const adminEmailHtml = `
-      <h2>New Quote Request</h2>
-      <p><strong>From:</strong> ${contact_name} &lt;${email}&gt; ${phone ? ` / ${phone}` : ''}</p>
-      <p><strong>Pet:</strong> ${petDetails}</p>
-      <p><strong>From:</strong> ${origin_city || 'N/A'}, ${origin_country || 'N/A'}</p>
-      <p><strong>To:</strong> ${dest_city || 'N/A'}, ${dest_country || 'N/A'}</p>
-      <p><strong>Travel Date:</strong> ${travel_date || 'Not specified'}</p>
-      <p><strong>Transport Type:</strong> ${transport_type || 'Not specified'}</p>
-      ${pickupInfo}
-      ${notes ? `<p><strong>Notes:</strong> ${notes}</p>` : ''}
-      <hr><p style="color:#888;">Sent via petflyinc.com quote form</p>
-    `;
-    await sendEmail('info@petflyinc.com', `New Quote Request from ${contact_name}`, adminEmailHtml);
-
-    // Send auto-reply confirmation to the client
-    const autoReplyHtml = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: #1a3a5c; color: white; padding: 24px; text-align: center;">
-          <h1 style="margin: 0; font-size: 24px;">🐾 Pet Fly Inc</h1>
-          <p style="margin: 8px 0 0; opacity: 0.9;">International Pet Transportation</p>
-        </div>
-        <div style="padding: 32px 24px; background: #ffffff;">
-          <h2 style="color: #1a3a5c; margin-top: 0;">Hi ${contact_name},</h2>
-          <p style="font-size: 16px; line-height: 1.6; color: #333;">Thank you for reaching out to Pet Fly Inc! We've received your quote request and our team is on it.</p>
-          <div style="background: #f0f7ff; border-left: 4px solid #1a3a5c; padding: 16px; margin: 24px 0; border-radius: 4px;">
-            <p style="margin: 0; font-size: 15px; color: #333;"><strong>🕐 Response Time:</strong></p>
-            <p style="margin: 8px 0 0; font-size: 15px; color: #333;">During business hours (Mon–Fri, 9AM–6PM PST), we typically respond within <strong>15–30 minutes</strong>.</p>
-            <p style="margin: 8px 0 0; font-size: 15px; color: #333;">Outside business hours or on weekends, we'll get back to you first thing the next business day.</p>
-          </div>
-          <p style="font-size: 15px; color: #555; line-height: 1.6;">In the meantime, feel free to explore our services at <a href="https://petflyinc.com/service" style="color: #1a3a5c;">petflyinc.com/service</a> or learn about country-specific regulations at <a href="https://petflyinc.com/regulations" style="color: #1a3a5c;">petflyinc.com/regulations</a>.</p>
-          <p style="font-size: 15px; color: #333; margin-top: 24px;">Safe travels for your furry friend! 🐕🐈</p>
-          <p style="color: #888; font-size: 14px; margin-top: 32px;">— The Pet Fly Inc Team<br>📧 info@petflyinc.com | 🌐 petflyinc.com</p>
-        </div>
-        <div style="background: #f5f5f5; padding: 16px 24px; text-align: center; font-size: 12px; color: #999;">
-          <p style="margin: 0;">© ${new Date().getFullYear()} Pet Fly Inc. IATA & USDA Certified.</p>
-        </div>
-      </div>
-    `;
-    await sendEmail(email, `We've received your quote request, ${contact_name}! 🐾`, autoReplyHtml);
+    const siteUrl = getSiteUrl();
+    const internal = emailTemplates.internalQuoteNotification({
+      name: contact_name,
+      email,
+      siteUrl,
+      details: [
+        ['Phone', phone], ['Pet', [pet_type, pet_name, breed].filter(Boolean).join(' - ')],
+        ['Route', [origin_city, origin_country].filter(Boolean).join(', ') + ' to ' + [dest_city, dest_country].filter(Boolean).join(', ')],
+        ['Travel date', travel_date], ['Transport', transport_type], ['Notes', notes]
+      ].filter(([, value]) => value)
+    });
+    const confirmation = emailTemplates.quoteConfirmation({ name: contact_name, siteUrl });
+    await Promise.all([
+      queueEmail({ to: 'info@petflyinc.com', subject: internal.subject, html: internal.html, text: internal.text }),
+      queueEmail({ to: email, subject: confirmation.subject, html: confirmation.html, text: confirmation.text })
+    ]);
 
     res.json({ success: true });
   } catch (err) {
@@ -1325,6 +1375,7 @@ app.post('/api/contact', async (req, res) => {
   const { name, email, phone, subject, message, fax_only, email_addr } = req.body;
   if (fax_only || email_addr) return res.json({ success: true });
   if (!name || !email || !message) return res.status(400).json({ success: false });
+  if (!allowPublicForm(req, 'contact')) return res.status(429).json({ success: false, message: 'Too many messages. Please try again later.' });
 
   try {
     await query(
@@ -1332,41 +1383,13 @@ app.post('/api/contact', async (req, res) => {
       [name, email, phone||null, subject||null, message]
     );
 
-    // Send email notification to admin
-    const adminEmailHtml = `
-      <h2>New Contact Message</h2>
-      <p><strong>From:</strong> ${name} &lt;${email}&gt; ${phone ? ` / ${phone}` : ''}</p>
-      <p><strong>Subject:</strong> ${subject || '(no subject)'}</p>
-      <p><strong>Message:</strong></p>
-      <p>${message.replace(/\n/g, '<br>')}</p>
-      <hr><p style="color:#888;">Sent via petflyinc.com contact form</p>
-    `;
-    await sendEmail('info@petflyinc.com', `Contact Form: ${subject || name}`, adminEmailHtml);
-
-    // Send auto-reply confirmation to the client
-    const autoReplyHtml = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: #1a3a5c; color: white; padding: 24px; text-align: center;">
-          <h1 style="margin: 0; font-size: 24px;">🐾 Pet Fly Inc</h1>
-          <p style="margin: 8px 0 0; opacity: 0.9;">International Pet Transportation</p>
-        </div>
-        <div style="padding: 32px 24px; background: #ffffff;">
-          <h2 style="color: #1a3a5c; margin-top: 0;">Hi ${name},</h2>
-          <p style="font-size: 16px; line-height: 1.6; color: #333;">Thank you for contacting Pet Fly Inc! We've received your message and our team will get back to you shortly.</p>
-          <div style="background: #f0f7ff; border-left: 4px solid #1a3a5c; padding: 16px; margin: 24px 0; border-radius: 4px;">
-            <p style="margin: 0; font-size: 15px; color: #333;"><strong>🕐 Response Time:</strong></p>
-            <p style="margin: 8px 0 0; font-size: 15px; color: #333;">During business hours (Mon–Fri, 9AM–6PM PST), we typically respond within <strong>15–30 minutes</strong>.</p>
-            <p style="margin: 8px 0 0; font-size: 15px; color: #333;">Outside business hours or on weekends, we'll get back to you first thing the next business day.</p>
-          </div>
-          <p style="font-size: 15px; color: #333; margin-top: 24px;">Safe travels for your furry friend! 🐕🐈</p>
-          <p style="color: #888; font-size: 14px; margin-top: 32px;">— The Pet Fly Inc Team<br>📧 info@petflyinc.com | 🌐 petflyinc.com</p>
-        </div>
-        <div style="background: #f5f5f5; padding: 16px 24px; text-align: center; font-size: 12px; color: #999;">
-          <p style="margin: 0;">© ${new Date().getFullYear()} Pet Fly Inc. IATA & USDA Certified.</p>
-        </div>
-      </div>
-    `;
-    await sendEmail(email, `We've received your message, ${name}! 🐾`, autoReplyHtml);
+    const siteUrl = getSiteUrl();
+    const internal = emailTemplates.internalContactNotification({ name, email, subject, message: [phone && `Phone: ${phone}`, message].filter(Boolean).join('\n'), siteUrl });
+    const confirmation = emailTemplates.contactConfirmation({ name, siteUrl });
+    await Promise.all([
+      queueEmail({ to: 'info@petflyinc.com', subject: internal.subject, html: internal.html, text: internal.text }),
+      queueEmail({ to: email, subject: confirmation.subject, html: confirmation.html, text: confirmation.text })
+    ]);
 
     res.json({ success: true });
   } catch (err) {
@@ -1820,6 +1843,7 @@ app.post('/api/admin/countries', requireAdmin, async (req, res) => {
        health_certificate||null, import_permit||null, Number(quarantine_days)||0,
        preparation_time||null, additional_requirements||null, restricted_breeds||null, contact_info||null]
     );
+    invalidateRegulationLists();
     res.json({ success: true, id: result.insertId });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -1840,6 +1864,7 @@ app.put('/api/admin/countries/:id', requireAdmin, async (req, res) => {
        preparation_time||null, additional_requirements||null, restricted_breeds||null,
        contact_info||null, req.params.id]
     );
+    invalidateRegulationLists();
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -1847,6 +1872,7 @@ app.put('/api/admin/countries/:id', requireAdmin, async (req, res) => {
 app.delete('/api/admin/countries/:id', requireAdmin, async (req, res) => {
   try {
     await query('DELETE FROM countries WHERE id = ?', [req.params.id]);
+    invalidateRegulationLists();
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -1869,6 +1895,7 @@ app.post('/api/admin/airlines', requireAdmin, async (req, res) => {
       [airline_name, carry_on||null, checked_bag||null, cargo||null, pet_fee||null,
        size_limits||null, breed_restrictions||null, booking_info||null, crate_requirements||null]
     );
+    invalidateRegulationLists();
     res.json({ success: true, id: result.insertId });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -1882,6 +1909,7 @@ app.put('/api/admin/airlines/:id', requireAdmin, async (req, res) => {
       [airline_name, carry_on||null, checked_bag||null, cargo||null, pet_fee||null,
        size_limits||null, breed_restrictions||null, booking_info||null, crate_requirements||null, req.params.id]
     );
+    invalidateRegulationLists();
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -1889,6 +1917,7 @@ app.put('/api/admin/airlines/:id', requireAdmin, async (req, res) => {
 app.delete('/api/admin/airlines/:id', requireAdmin, async (req, res) => {
   try {
     await query('DELETE FROM airlines WHERE id = ?', [req.params.id]);
+    invalidateRegulationLists();
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

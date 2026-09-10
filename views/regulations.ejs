@@ -25,6 +25,23 @@ function searchAirline() {
     }
 }
 
+function escapeRegulationHtml(value) {
+    return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function regulationValue(value, fallback) {
+    return value ? escapeRegulationHtml(value).replace(/\n/g, '<br>') : fallback;
+}
+
+function isRequired(value) {
+    return Boolean(value) && !/^(no|n\/a|not required)$/i.test(String(value).trim());
+}
+
 // Load country regulations
 function showCountryTab(countryId) {
     var container = document.getElementById('countryInfo');
@@ -48,18 +65,18 @@ function showCountryTab(countryId) {
         html += '</div>';
 
         html += '<div id="tab-overview" class="tab-content active">';
-        html += '<div class="reg-header"><span class="reg-flag">&#127757;</span><h2>' + data.country_name + ' Import Regulations</h2></div>';
+        html += '<div class="reg-header"><span class="reg-flag">&#127757;</span><h2>' + regulationValue(data.country_name, 'Country') + ' Import Regulations</h2></div>';
         html += '<div class="reg-grid">';
-        html += '<div class="reg-item"><label>Accepted Pets</label><span>' + (data.pet_types || 'Dogs, Cats') + '</span></div>';
-        html += '<div class="reg-item"><label>Microchip</label><span>' + (data.microchip || 'N/A') + '</span></div>';
-        html += '<div class="reg-item"><label>Rabies</label><span>' + (data.rabies_vaccination || 'N/A') + '</span></div>';
-        html += '<div class="reg-item"><label>Health Certificate</label><span>' + (data.health_certificate || 'N/A') + '</span></div>';
-        html += '<div class="reg-item"><label>Import Permit</label><span>' + (data.import_permit || 'N/A') + '</span></div>';
+        html += '<div class="reg-item"><label>Accepted Pets</label><span>' + regulationValue(data.pet_types, 'Dogs, Cats') + '</span></div>';
+        html += '<div class="reg-item"><label>Microchip</label><span>' + regulationValue(data.microchip, 'N/A') + '</span></div>';
+        html += '<div class="reg-item"><label>Rabies</label><span>' + regulationValue(data.rabies_vaccination, 'N/A') + '</span></div>';
+        html += '<div class="reg-item"><label>Health Certificate</label><span>' + regulationValue(data.health_certificate, 'N/A') + '</span></div>';
+        html += '<div class="reg-item"><label>Import Permit</label><span>' + regulationValue(data.import_permit, 'N/A') + '</span></div>';
         html += '<div class="reg-item"><label>Quarantine</label><span>' + (data.quarantine_days > 0 ? data.quarantine_days + ' days' : 'Not required') + '</span></div>';
         html += '<div class="reg-item"><label>Prep Time</label><span>' + (data.preparation_time || 'Varies') + '</span></div>';
         html += '</div>';
         if (data.additional_requirements) {
-            html += '<div class="reg-section"><h3><i class="fas fa-info-circle"></i> Additional Requirements</h3><p>' + data.additional_requirements + '</p></div>';
+            html += '<div class="reg-section"><h3><i class="fas fa-info-circle"></i> Additional Requirements</h3><p>' + regulationValue(data.additional_requirements, '') + '</p></div>';
         }
         html += '</div>';
 
@@ -67,24 +84,24 @@ function showCountryTab(countryId) {
         html += '<h3>Step-by-Step Requirements</h3>';
         html += '<ol class="req-list">';
         html += '<li><strong>Microchip</strong> — ' + (data.microchip ? 'ISO 11784/11785 standard required' : 'Not required but recommended') + '</li>';
-        html += '<li><strong>Rabies Vaccination</strong> — ' + (data.rabies_vaccination || 'Check with destination authorities') + '</li>';
-        html += '<li><strong>Health Certificate</strong> — ' + (data.health_certificate || 'Required from licensed veterinarian') + '</li>';
-        if (data.import_permit) {
+        html += '<li><strong>Rabies Vaccination</strong> — ' + regulationValue(data.rabies_vaccination, 'Check with destination authorities') + '</li>';
+        html += '<li><strong>Health Certificate</strong> — ' + regulationValue(data.health_certificate, 'Required from licensed veterinarian') + '</li>';
+        if (isRequired(data.import_permit)) {
             html += '<li><strong>Import Permit</strong> — Must obtain official permit before travel</li>';
         }
         html += '<li><strong>Book Transport</strong> — Contact Pet Fly Inc to arrange shipment</li>';
         html += '<li><strong>Arrival</strong> — ' + (data.quarantine_days > 0 ? 'Quarantine required for ' + data.quarantine_days + ' days' : 'No quarantine required') + '</li>';
         html += '</ol>';
-        html += '<p class="prep-note"><i class="fas fa-clock"></i> Recommended preparation: ' + (data.preparation_time || 'Contact us for timeline') + '</p>';
+        html += '<p class="prep-note"><i class="fas fa-clock"></i> Recommended preparation: ' + regulationValue(data.preparation_time, 'Contact us for timeline') + '</p>';
         html += '</div>';
 
         html += '<div id="tab-documents" class="tab-content">';
         html += '<h3>Required Documents</h3>';
         html += '<ul class="doc-list">';
-        if (data.microchip) html += '<li><i class="fas fa-microchip"></i> Microchip Certificate</li>';
-        if (data.rabies_vaccination) html += '<li><i class="fas fa-syringe"></i> Rabies Vaccination Certificate</li>';
-        if (data.health_certificate) html += '<li><i class="fas fa-file-medical"></i> Veterinary Health Certificate</li>';
-        if (data.import_permit) html += '<li><i class="fas fa-passport"></i> Import Permit</li>';
+        if (isRequired(data.microchip)) html += '<li><i class="fas fa-microchip"></i> Microchip Certificate</li>';
+        if (isRequired(data.rabies_vaccination)) html += '<li><i class="fas fa-syringe"></i> Rabies Vaccination Certificate</li>';
+        if (isRequired(data.health_certificate)) html += '<li><i class="fas fa-file-medical"></i> Veterinary Health Certificate</li>';
+        if (isRequired(data.import_permit)) html += '<li><i class="fas fa-passport"></i> Import Permit</li>';
         html += '<li><i class="fas fa-plane"></i> Airline Booking Confirmation</li>';
         html += '<li><i class="fas fa-box"></i> IATA-Approved Crate</li>';
         html += '</ul></div>';
@@ -92,10 +109,10 @@ function showCountryTab(countryId) {
         if (data.restricted_breeds) {
             html += '<div id="tab-breeds" class="tab-content">';
             html += '<h3>Breed Restrictions</h3>';
-            html += '<p>Some breeds may be restricted in ' + data.country_name + ':</p>';
+            html += '<p>Some breeds may be restricted in ' + regulationValue(data.country_name, 'this country') + ':</p>';
             var breeds = data.restricted_breeds.split(', ');
             html += '<ul class="breed-list">';
-            breeds.forEach(function(breed) { html += '<li>' + breed.trim() + '</li>'; });
+            breeds.forEach(function(breed) { html += '<li>' + escapeRegulationHtml(breed.trim()) + '</li>'; });
             html += '</ul>';
             html += '<p class="note">Note: Restrictions may vary. Contact us for specific breed inquiries.</p>';
             html += '</div>';
@@ -111,6 +128,8 @@ function showCountryTab(countryId) {
                 document.getElementById('tab-' + tab).classList.add('active');
             });
         });
+    }).catch(function() {
+        container.innerHTML = '<div class="select-prompt"><i class="fas fa-circle-exclamation"></i><p>Unable to load these regulations right now. Please try again.</p></div>';
     });
 }
 
@@ -136,25 +155,25 @@ function showAirlineTab(airlineId) {
         html += '</div>';
 
         html += '<div id="airline-overview" class="tab-content active">';
-        html += '<div class="reg-header"><h2>' + data.airline_name + ' Pet Policy</h2></div>';
+        html += '<div class="reg-header"><h2>' + regulationValue(data.airline_name, 'Airline') + ' Pet Policy</h2></div>';
         html += '<div class="reg-grid">';
-        html += '<div class="reg-item"><label>Cabin</label><span>' + (data.carry_on || 'N/A') + '</span></div>';
-        html += '<div class="reg-item"><label>Checked Bag</label><span>' + (data.checked_bag || 'N/A') + '</span></div>';
-        html += '<div class="reg-item"><label>Cargo</label><span>' + (data.cargo || 'N/A') + '</span></div>';
+        html += '<div class="reg-item"><label>Cabin</label><span>' + regulationValue(data.carry_on, 'N/A') + '</span></div>';
+        html += '<div class="reg-item"><label>Checked Bag</label><span>' + regulationValue(data.checked_bag, 'N/A') + '</span></div>';
+        html += '<div class="reg-item"><label>Cargo</label><span>' + regulationValue(data.cargo, 'N/A') + '</span></div>';
         html += '</div>';
-        if (data.size_limits) html += '<div class="reg-section"><h3>Size Limits</h3><p>' + data.size_limits + '</p></div>';
-        if (data.breed_restrictions) html += '<div class="reg-section"><h3>Breed Restrictions</h3><p>' + data.breed_restrictions + '</p></div>';
+        if (data.size_limits) html += '<div class="reg-section"><h3>Size Limits</h3><p>' + regulationValue(data.size_limits, '') + '</p></div>';
+        if (data.breed_restrictions) html += '<div class="reg-section"><h3>Breed Restrictions</h3><p>' + regulationValue(data.breed_restrictions, '') + '</p></div>';
         html += '</div>';
 
         html += '<div id="airline-fees" class="tab-content">';
         html += '<h3>Pet Fees</h3>';
-        html += '<div class="fee-card"><span class="fee-label">Pet Fee</span><span class="fee-amount">' + (data.pet_fee || 'Contact airline') + '</span></div>';
-        if (data.booking_info) html += '<p class="booking-info"><i class="fas fa-info-circle"></i> ' + data.booking_info + '</p>';
+        html += '<div class="fee-card"><span class="fee-label">Pet Fee</span><span class="fee-amount">' + regulationValue(data.pet_fee, 'Contact airline') + '</span></div>';
+        if (data.booking_info) html += '<p class="booking-info"><i class="fas fa-info-circle"></i> ' + regulationValue(data.booking_info, '') + '</p>';
         html += '</div>';
 
         html += '<div id="airline-crates" class="tab-content">';
         html += '<h3>Crate Requirements</h3>';
-        html += '<p>' + (data.crate_requirements || 'IATA-approved crate required.') + '</p>';
+        html += '<p>' + regulationValue(data.crate_requirements, 'IATA-approved crate required.') + '</p>';
         html += '<ul class="crate-list">';
         html += '<li><i class="fas fa-check"></i> IATA-compliant transport crate</li>';
         html += '<li><i class="fas fa-check"></i> Proper ventilation</li>';
@@ -173,39 +192,11 @@ function showAirlineTab(airlineId) {
                 document.getElementById('airline-' + tab).classList.add('active');
             });
         });
+    }).catch(function() {
+        container.innerHTML = '<div class="select-prompt"><i class="fas fa-circle-exclamation"></i><p>Unable to load this airline policy right now. Please try again.</p></div>';
     });
 }
 
-// Initialize countries and airlines on page load
-document.addEventListener('DOMContentLoaded', function() {
-    fetch('/api/countries')
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        var select = document.getElementById('countrySelect');
-        if (data.countries) {
-            data.countries.forEach(function(c) {
-                var opt = document.createElement('option');
-                opt.value = c.id;
-                opt.textContent = c.country_name;
-                select.appendChild(opt);
-            });
-        }
-    });
-
-    fetch('/api/airlines')
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        var select = document.getElementById('airlineSelect');
-        if (data.airlines) {
-            data.airlines.forEach(function(a) {
-                var opt = document.createElement('option');
-                opt.value = a.id;
-                opt.textContent = a.airline_name;
-                select.appendChild(opt);
-            });
-        }
-    });
-});
 </script>
 
   <!-- PAGE HEADER -->
@@ -235,8 +226,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 <i class="fas fa-search"></i>
                 <input type="text" id="countrySearch" class="search-input" placeholder="Search countries..." onkeyup="searchCountry()">
               </div>
-              <select id="countrySelect" class="reg-select" onchange="showCountryTab(this.value)" style="min-width: 260px;">
-                <option value="">Select a Country</option>
+                  <select id="countrySelect" class="reg-select" onchange="showCountryTab(this.value)" style="min-width: 260px;">
+                    <option value="">Select a Country</option>
+                    <% countries.forEach(function(country) { %><option value="<%= country.id %>"><%= country.country_name %></option><% }); %>
               </select>
             </div>
           </div>
@@ -266,8 +258,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 <i class="fas fa-search"></i>
                 <input type="text" id="airlineSearch" class="search-input" placeholder="Search airlines..." onkeyup="searchAirline()">
               </div>
-              <select id="airlineSelect" class="reg-select" onchange="showAirlineTab(this.value)" style="min-width: 260px;">
-                <option value="">Select an Airline</option>
+                  <select id="airlineSelect" class="reg-select" onchange="showAirlineTab(this.value)" style="min-width: 260px;">
+                    <option value="">Select an Airline</option>
+                    <% airlines.forEach(function(airline) { %><option value="<%= airline.id %>"><%= airline.airline_name %></option><% }); %>
               </select>
             </div>
           </div>

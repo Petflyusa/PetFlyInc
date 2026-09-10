@@ -231,26 +231,6 @@
     observer.observe(root, { childList:true, subtree:true });
   }
 
-  async function translatePage(root, language) {
-    var selected = normalizeLanguage(language) || getLanguage();
-    if (selected === 'en' || !root || !global || !global.document || !global.document.createTreeWalker || !global.fetch) return;
-    var walker = global.document.createTreeWalker(root, 4), nodes = [];
-    while (walker.nextNode()) {
-      var node = walker.currentNode, parent = node.parentElement, value = node.nodeValue.trim();
-      if (!value || !parent || /^(SCRIPT|STYLE|TEXTAREA|OPTION)$/i.test(parent.tagName) || /@|PF-\d|\d{3,}/.test(value)) continue;
-      nodes.push(node);
-    }
-    await Promise.all(nodes.map(async function (node) {
-      var source = originalText && originalText.get(node) || node.nodeValue.trim();
-      if (!source || source.length > 450) return;
-      try {
-        var url = 'https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=en&tl=' + selected + '&dt=t&q=' + encodeURIComponent(source);
-        var response = await global.fetch(url), payload = await response.json();
-        if (payload && payload[0]) { if (originalText) originalText.set(node, source); node.nodeValue = node.nodeValue.replace(source, payload[0]); }
-      } catch (_) { /* Local catalog text remains available when translation is unreachable. */ }
-    }));
-  }
-
   function setLanguage(language) {
     var chosen = normalizeLanguage(language) || 'en';
 
@@ -280,7 +260,6 @@
     getLanguage: getLanguage,
     setLanguage: setLanguage,
     apply: apply,
-    observe: observe,
-    translatePage: translatePage
+    observe: observe
   };
 }));
