@@ -1,0 +1,59 @@
+<%- include('partials/header', { currentPage: 'service' }) %>
+
+<main>
+  <section class="page-header">
+    <img class="page-header-video" src="/images/service-hero.jpg" alt="International pet transportation service" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:center;z-index:0;">
+    <div class="page-header-overlay"></div>
+    <div class="container">
+      <span class="section-label"><%= landing.eyebrow %></span>
+      <h1><%= landing.title %></h1>
+      <p><%= landing.summary %></p>
+      <a href="/quote" class="btn-primary" style="display:inline-flex;width:auto;text-decoration:none;margin-top:1.25rem;">Request a Quote <i class="fas fa-arrow-right" style="font-size:0.7rem;"></i></a>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="content-block">
+        <div class="content-block__text">
+          <span class="section-label">How We Help</span>
+          <h2>A travel plan built around the route and your pet.</h2>
+          <p>International pet travel is not one-size-fits-all. The right plan depends on the destination, carrier, timing, your pet's needs, and the documents required for the journey.</p>
+          <ul class="feature-list"><% landing.highlights.forEach(function(highlight) { %><li><%= highlight %></li><% }) %></ul>
+        </div>
+        <div class="content-block__media"><img src="/images/service-hero.jpg" alt="Pet Fly Inc international pet transport planning" loading="lazy"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="background:var(--cream);">
+    <div class="container">
+      <div class="section-header-left"><span class="section-label">The Process</span><h2 class="section-title">What to expect</h2></div>
+      <div class="services-grid"><% landing.steps.forEach(function(step, index) { %><article class="service-item"><div class="service-icon"><span style="font-family:var(--font-serif);font-size:1.3rem;"><%= index + 1 %></span></div><h3><%= step.title %></h3><p><%= step.text %></p></article><% }) %></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="content-block reverse">
+        <div class="content-block__text">
+          <span class="section-label">Before We Begin</span>
+          <h2>Useful information for your quote.</h2>
+          <p>Sharing the following information helps us understand the route and prepare an accurate next-step plan.</p>
+          <ul class="feature-list"><% landing.preparation.forEach(function(item) { %><li><%= item %></li><% }) %></ul>
+          <a href="/quote" class="btn-primary" style="display:inline-flex;width:auto;text-decoration:none;margin-top:1.25rem;">Start Your Quote <i class="fas fa-arrow-right" style="font-size:0.7rem;"></i></a>
+        </div>
+        <div class="content-block__media"><img src="/images/hero-bg.jpg" alt="Pet travel preparation" loading="lazy"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="background:var(--cream);">
+    <div class="container" style="max-width:900px;">
+      <div class="section-header-left"><span class="section-label">Common Questions</span><h2 class="section-title">Before your pet travels</h2></div>
+      <% landing.faqs.forEach(function(faq) { %><details style="border-top:1px solid var(--warm-gray-100);padding:1.15rem 0;"><summary style="cursor:pointer;font-family:var(--font-serif);font-size:1.2rem;color:var(--charcoal);"><%= faq.question %></summary><p style="margin:0.85rem 0 0;color:var(--text-muted);line-height:1.7;"><%= faq.answer %></p></details><% }) %>
+    </div>
+  </section>
+</main>
+
+<%- include('partials/footer') %>

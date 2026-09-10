@@ -28,6 +28,7 @@ const { createTtlCache } = require('./lib/ttl-cache');
 const { createRateLimiter } = require('./lib/request-rate-limit');
 const { enqueueEmail, processNextEmail } = require('./lib/email-queue');
 const { getSeoMetadata } = require('./lib/seo');
+const { serviceLandingByPath } = require('./lib/service-landings');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -456,6 +457,11 @@ app.get('/', async (req, res) => {
 app.get('/service', async (req, res) => {
   const footer = await getFooter();
   res.render('service', { footer });
+});
+
+app.get(Object.keys(serviceLandingByPath), async (req, res) => {
+  const footer = await getFooter();
+  res.render('service-landing', { footer, landing: serviceLandingByPath[req.path] });
 });
 
 // Quote
