@@ -27,6 +27,7 @@ const emailTemplates = require('./lib/email-templates');
 const { createTtlCache } = require('./lib/ttl-cache');
 const { createRateLimiter } = require('./lib/request-rate-limit');
 const { enqueueEmail, processNextEmail } = require('./lib/email-queue');
+const { getSeoMetadata } = require('./lib/seo');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -193,6 +194,10 @@ app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 app.use((req, res, next) => {
   res.locals.canonicalUrl = `${getSiteUrl()}${req.path === '/' ? '/' : req.path}`;
+  res.locals.seo = getSeoMetadata(req.path, getSiteUrl());
+  if (/^\/(admin|portal|dashboard|partner|login|register|verify)(?:\/|$)/.test(req.path)) {
+    res.set('X-Robots-Tag', 'noindex, nofollow');
+  }
   next();
 });
 app.use('/uploads', express.static(uploadDir));

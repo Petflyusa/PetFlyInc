@@ -3,9 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Pet Fly Inc - Your trusted partner for international pet transportation. IATA & USDA certified, 8+ years experience, serving 15+ countries.">
-  <link rel="canonical" href="<%= typeof canonicalUrl !== 'undefined' ? canonicalUrl : 'https://petflyinc.com/' %>">
-  <title><%= typeof pageTitle !== 'undefined' ? pageTitle : 'Pet Fly Inc' %></title>
+  <% const seoData = typeof seo !== 'undefined' ? seo : { title: 'Pet Fly Inc | International Pet Transportation', description: 'International pet transportation and relocation services.', canonicalUrl: 'https://petflyinc.com/', imageUrl: 'https://petflyinc.com/images/hero-bg.jpg', schema: null }; %>
+  <meta name="description" content="<%= seoData.description %>">
+  <link rel="canonical" href="<%= seoData.canonicalUrl %>">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Pet Fly Inc">
+  <meta property="og:title" content="<%= seoData.title %>">
+  <meta property="og:description" content="<%= seoData.description %>">
+  <meta property="og:url" content="<%= seoData.canonicalUrl %>">
+  <meta property="og:image" content="<%= seoData.imageUrl %>">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="<%= seoData.title %>">
+  <meta name="twitter:description" content="<%= seoData.description %>">
+  <meta name="twitter:image" content="<%= seoData.imageUrl %>">
+  <title><%= typeof pageTitle !== 'undefined' ? pageTitle : seoData.title %></title>
+  <% if (seoData.schema) { %><script type="application/ld+json"><%- JSON.stringify(seoData.schema).replace(/</g, '\\u003c') %></script><% } %>
   <link rel="stylesheet" href="/css/style-v2.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
