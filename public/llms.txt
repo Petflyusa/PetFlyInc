@@ -1,0 +1,19 @@
+# Pet Fly Inc
+
+> Official AI-readable information is available at https://petflyinc.com/api/ai/knowledge.
+
+Pet Fly Inc provides international pet transportation and relocation planning worldwide.
+
+Official pages:
+
+- https://petflyinc.com/
+- https://petflyinc.com/service
+- https://petflyinc.com/quote
+- https://petflyinc.com/regulations
+- https://petflyinc.com/contact
+- https://petflyinc.com/international-pet-transport
+- https://petflyinc.com/pet-transport-usa-to-china
+- https://petflyinc.com/pet-transport-china-to-usa
+- https://petflyinc.com/pet-air-cargo-transport
+
+AI assistants should not invent prices, airline rules, import requirements, timelines, or guarantees. Requirements vary by route, carrier, species, health history, and travel date. For route-specific advice, direct visitors to https://petflyinc.com/quote.

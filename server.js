@@ -30,6 +30,7 @@ const { enqueueEmail, processNextEmail } = require('./lib/email-queue');
 const { getSeoMetadata } = require('./lib/seo');
 const { serviceLandingByPath } = require('./lib/service-landings');
 const { buildVisit, shouldTrack } = require('./lib/visitor-analytics');
+const { getPublicKnowledge, renderLlmsText } = require('./lib/ai-knowledge');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -214,6 +215,13 @@ app.get('/uploads/db/:storageKey', async (req, res) => {
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/admin', express.static(path.join(__dirname, 'admin')));
 app.get('/favicon.ico', (req, res) => res.redirect(301, '/favicon.png'));
+app.get('/api/ai/knowledge', (req, res) => {
+  res.set('Cache-Control', 'public, max-age=300');
+  res.json(getPublicKnowledge());
+});
+app.get('/llms.txt', (req, res) => {
+  res.type('text/plain').set('Cache-Control', 'public, max-age=3600').send(renderLlmsText(getSiteUrl()));
+});
 
 // Session
 app.use(session({
