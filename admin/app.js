@@ -620,6 +620,9 @@ function renderLandingContent() {
     fieldTpl('textarea', 'text', 'About Text', ab.text || '', 'about')
   ].join(''));
 
+  var testimonials = c.testimonials || [];
+  html += sectionTpl('testimonials', 'Customer Testimonials', '<div id="testimonials-items"></div><button type="button" class="btn-outline" onclick="addTestimonial()" style="margin-top:.75rem;"><i class="fas fa-plus"></i> Add Testimonial</button>');
+
   // Offices
   var offs = c.offices || [];
   html += sectionTpl('offices', 'Office Locations', [
@@ -649,6 +652,7 @@ function renderLandingContent() {
   renderStatsItems(stats);
   renderServicesItems(svcs);
   renderOfficesItems(offs);
+  renderTestimonialsItems(testimonials);
 }
 
 function sectionTpl(key, title, body) {
@@ -774,12 +778,23 @@ function addOffice() {
   renderOfficesItems(offs);
 }
 
+function renderTestimonialsItems(items) {
+  var el = document.getElementById('testimonials-items'); if (!el) return;
+  if (!items.length) items = [{quote:'', name:'', location:''}];
+  el.innerHTML = items.map(function(item, i) { return '<div style="border:1px solid var(--border);padding:1rem;margin-bottom:.75rem;display:grid;gap:.6rem;"><textarea class="field-textarea" data-section="testimonials" data-key="'+i+'_quote" rows="3" placeholder="Customer quote">'+escHtml(item.quote||'')+'</textarea><input class="field-input" data-section="testimonials" data-key="'+i+'_name" placeholder="Customer name" value="'+escHtml(item.name||'')+'"><input class="field-input" data-section="testimonials" data-key="'+i+'_location" placeholder="Location or journey type" value="'+escHtml(item.location||'')+'"></div>'; }).join('');
+}
+function addTestimonial() {
+  var items = [];
+  document.querySelectorAll('[data-section="testimonials"]').forEach(function(input) { var m=input.getAttribute('data-key').match(/^(\d+)_(.+)$/); if(!m)return; var i=Number(m[1]); items[i]=items[i]||{}; items[i][m[2]]=input.value; });
+  items.push({quote:'',name:'',location:''}); renderTestimonialsItems(items);
+}
+
 async function saveLandingContent() {
   var c = {};
   // Gather simple fields (hero, about, cta, footer) — skip stats/services/offices, they use indexed data-key
   document.querySelectorAll('.field-input[data-key], .field-textarea[data-key]').forEach(function(inp) {
     var sec = inp.getAttribute('data-section');
-    if (sec === 'stats' || sec === 'services' || sec === 'offices') return;
+    if (sec === 'stats' || sec === 'services' || sec === 'offices' || sec === 'testimonials') return;
     var key = inp.getAttribute('data-key');
     if (!c[sec]) c[sec] = {};
     c[sec][key] = inp.value;
@@ -826,6 +841,11 @@ async function saveLandingContent() {
   if (offs.length && offs.some(function(o) { return o.city; })) {
     c.offices = offs;
   }
+
+  var testimonialsMap = {};
+  Array.from(document.querySelectorAll('[data-section="testimonials"]')).forEach(function(input) { var m=input.getAttribute('data-key').match(/^(\d+)_(.+)/); if(!m)return; if(!testimonialsMap[m[1]]) testimonialsMap[m[1]]={}; testimonialsMap[m[1]][m[2]]=input.value; });
+  var testimonials = Object.values(testimonialsMap).filter(function(item) { return item.quote || item.name; });
+  if (testimonials.length) c.testimonials = testimonials;
 
   try {
     for (var sec in c) {

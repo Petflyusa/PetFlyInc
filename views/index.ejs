@@ -7,6 +7,7 @@
 <% const offs = content.offices || [{city:'Los Angeles',country:'California, USA',type:'Headquarters'},{city:'Shanghai',country:'China',type:''},{city:'Beijing',country:'China',type:''}]; %>
 <% const ft = content.footer || {email:'info@petflyinc.com',phone:'+1 (555) 123-4567',hours:'Mon—Fri: 9AM — 6PM PST'}; %>
 <% const cta = content.cta || {headline:'Ready to begin your pet\'s journey?',sub:'Request a quote and we\'ll respond within 24 hours.',button_text:'Request a Quote'}; %>
+<% const testimonials = content.testimonials && content.testimonials.length ? content.testimonials : [{ quote: 'Pet Fly Inc handled every detail with care and kept us informed from departure to arrival.', name: 'Pet Fly client', location: 'International relocation' }, { quote: 'The document and airline guidance made a complicated journey feel simple.', name: 'Pet Fly client', location: 'Worldwide pet travel' }]; %>
 
   <!-- HERO -->
   <section id="content-start" class="hero">
@@ -133,6 +134,11 @@
         </div>
       </div>
     </div>
+  </section>
+
+  <!-- CUSTOMER TESTIMONIALS -->
+  <section class="section" style="background: var(--charcoal); color: var(--cream);">
+    <div class="container"><span class="section-label" style="color:var(--accent);">Customer Stories</span><h2 class="section-title" style="color:var(--cream);">Trusted with every journey.</h2><div class="services-grid" style="margin-top:var(--space-lg);"><% testimonials.forEach(function(testimonial) { %><figure style="margin:0;padding:var(--space-lg);border:1px solid rgba(247,245,240,.18);"><blockquote style="margin:0;color:var(--cream);font-family:var(--font-serif);font-size:1.25rem;line-height:1.55;">“<%= testimonial.quote %>”</blockquote><figcaption style="margin-top:var(--space-md);color:rgba(247,245,240,.68);"><strong style="color:var(--cream);"><%= testimonial.name %></strong><br><%= testimonial.location %></figcaption></figure><% }); %></div></div>
   </section>
 
   <!-- CTA SECTION -->

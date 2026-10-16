@@ -93,7 +93,10 @@
       'IATA-Approved Transport Containers':'Contenedores de transporte aprobados por IATA', 'Country Regulations':'Regulaciones del país',
       'Airline Regulations':'Regulaciones de aerolíneas', 'Select a Country':'Seleccione un país', 'Select an Airline':'Seleccione una aerolínea',
       'Need Help?':'¿Necesita ayuda?', 'Overview':'Resumen', 'Requirements':'Requisitos', 'Breed Restrictions':'Restricciones de raza',
-      'Import Permit':'Permiso de importación', 'Health Certificate':'Certificado de salud', 'Quarantine':'Cuarentena'
+      'Import Permit':'Permiso de importación', 'Health Certificate':'Certificado de salud', 'Quarantine':'Cuarentena',
+      'What We Do':'Lo que hacemos', 'Our Services':'Nuestros servicios', 'The Process':'El proceso', 'Global Presence':'Presencia global', 'Our offices around the world':'Nuestras oficinas alrededor del mundo',
+      'Transport Quote':'Cotización de transporte', 'Request your':'Solicita tu', 'personalised quote.':'cotización personalizada.', 'What to expect':'Qué esperar', 'Pet and shipment':'Mascota y envío', 'Your details':'Tus datos', 'Import country *':'País de importación *', 'Select destination country':'Selecciona el país de destino', 'Import city, airport, or port':'Ciudad, aeropuerto o puerto de importación', 'Estimated arrival date':'Fecha estimada de llegada', 'Pet type':'Tipo de mascota', 'Number of pets':'Número de mascotas', 'Document status':'Estado de documentos', 'Airline':'Aerolínea', 'Air waybill (AWB) number':'Número de guía aérea (AWB)', 'Flight details':'Detalles del vuelo', 'Support requested':'Ayuda solicitada', 'Additional details':'Detalles adicionales', 'Send import brokerage request':'Enviar solicitud de gestión de importación', 'Request received':'Solicitud recibida',
+      'Worldwide Import Brokerage':'Gestión de importación mundial', 'How it works':'Cómo funciona', 'One request for any destination.':'Una solicitud para cualquier destino.', 'Worldwide destination support':'Asistencia para destinos en todo el mundo', 'Import permit / document review':'Revisión de permisos y documentos de importación', 'Customs clearance coordination':'Coordinación del despacho aduanero', 'Airport or port release coordination':'Coordinación de liberación en aeropuerto o puerto', 'Quarantine / inspection guidance':'Orientación sobre cuarentena e inspección', 'Local delivery coordination':'Coordinación de entrega local', 'What We Offer':'Lo que ofrecemos', 'Essentials':'Aspectos esenciales', 'Equipment':'Equipamiento', 'Assistance Dog Travel Support':'Asistencia para viajar con perros de servicio'
     },
     zh: {
       'Relocation Progress':'搬迁进度', 'Relocation Timeline':'搬迁时间线', 'Upcoming Events':'即将举行的活动',
@@ -121,7 +124,10 @@
       'IATA-Approved Transport Containers':'IATA 认可的运输箱', 'Country Regulations':'国家规定',
       'Airline Regulations':'航空公司规定', 'Select a Country':'选择国家', 'Select an Airline':'选择航空公司',
       'Need Help?':'需要帮助？', 'Overview':'概览', 'Requirements':'要求', 'Breed Restrictions':'品种限制',
-      'Import Permit':'进口许可证', 'Health Certificate':'健康证明', 'Quarantine':'隔离'
+      'Import Permit':'进口许可证', 'Health Certificate':'健康证明', 'Quarantine':'隔离',
+      'What We Do':'我们做什么', 'Our Services':'我们的服务', 'The Process':'流程', 'Global Presence':'全球布局', 'Our offices around the world':'我们遍布全球的办公室',
+      'Transport Quote':'运输报价', 'Request your':'申请您的', 'personalised quote.':'个性化报价。', 'What to expect':'您将获得什么', 'Pet and shipment':'宠物与运输', 'Your details':'您的信息', 'Import country *':'进口国家 *', 'Select destination country':'选择目的地国家', 'Import city, airport, or port':'进口城市、机场或港口', 'Estimated arrival date':'预计到达日期', 'Pet type':'宠物类型', 'Number of pets':'宠物数量', 'Document status':'文件状态', 'Airline':'航空公司', 'Air waybill (AWB) number':'航空运单（AWB）号码', 'Flight details':'航班详情', 'Support requested':'所需服务', 'Additional details':'补充信息', 'Send import brokerage request':'发送进口代理申请', 'Request received':'已收到申请',
+      'Worldwide Import Brokerage':'全球进口代理', 'How it works':'服务流程', 'One request for any destination.':'一份申请，覆盖任何目的地。', 'Worldwide destination support':'全球目的地支持', 'Import permit / document review':'进口许可和文件审核', 'Customs clearance coordination':'海关清关协调', 'Airport or port release coordination':'机场或港口放行协调', 'Quarantine / inspection guidance':'检疫和检查指导', 'Local delivery coordination':'当地配送协调', 'What We Offer':'我们的服务', 'Essentials':'基础服务', 'Equipment':'设备', 'Assistance Dog Travel Support':'辅助犬旅行支持'
     }
   };
 
