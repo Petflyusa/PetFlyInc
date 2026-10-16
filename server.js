@@ -518,7 +518,15 @@ app.get('/import-brokerage', async (req, res) => {
 // Contact
 app.get('/contact', async (req, res) => {
   const footer = await getFooter();
-  res.render('contact', { footer });
+  let content = {};
+  try { content = await getLandingContent(); } catch (err) { console.error('[Contact] Could not load office content:', err.message); }
+  const offices = content.offices && content.offices.length ? content.offices : [
+    { city: 'Los Angeles', country: 'California, USA', type: 'Headquarters', phone: '+1 (555) 123-4567', email: 'info@petflyinc.com', hours: 'Mon—Fri: 9AM — 6PM PST' },
+    { city: 'Shanghai', country: 'China', phone: '+86 21 1234 5678', email: 'shanghai@petflyinc.com', hours: 'Mon—Fri: 9AM — 6PM CST' },
+    { city: 'Beijing', country: 'China', phone: '+86 10 1234 5678', email: 'beijing@petflyinc.com', hours: 'Mon—Fri: 9AM — 6PM CST' },
+    { city: 'Chengdu', country: 'China', phone: '+86 28 1234 5678', email: 'chengdu@petflyinc.com', hours: 'Mon—Fri: 9AM — 6PM CST' }
+  ];
+  res.render('contact', { footer, offices });
 });
 
 // Regulations

@@ -54,45 +54,17 @@ function submitContactForm(event) {
         <div>
           <span class="section-label">Our Offices</span>
 
+          <% (offices || []).forEach(function(office) { var tel = String(office.phone || '').replace(/[^0-9+]/g, ''); %>
           <div class="contact-office">
-            <h3>Los Angeles — Headquarters</h3>
+            <h3><%= office.city || '' %><%= office.type ? ' — ' + office.type : '' %></h3>
             <address>
-              California, USA<br>
-              <a href="tel:+155****4567">+1 (555) 123-4567</a><br>
-              <a href="mailto:info@petflyinc.com">info@petflyinc.com</a>
+              <%= office.country || '' %><br>
+              <% if (office.phone) { %><a href="tel:<%= tel %>"><%= office.phone %></a><br><% } %>
+              <% if (office.email) { %><a href="mailto:<%= office.email %>"><%= office.email %></a><% } %>
             </address>
-            <p style="margin-top: 0.5rem; font-size: 0.8125rem; color: var(--text-muted);">Mon—Fri: 9AM — 6PM PST</p>
+            <% if (office.hours) { %><p style="margin-top: 0.5rem; font-size: 0.8125rem; color: var(--text-muted);"><%= office.hours %></p><% } %>
           </div>
-
-          <div class="contact-office">
-            <h3>Shanghai</h3>
-            <address>
-              China<br>
-              <a href="tel:+862****5678">+86 21 1234 5678</a><br>
-              <a href="mailto:shanghai@petflyinc.com">shanghai@petflyinc.com</a>
-            </address>
-            <p style="margin-top: 0.5rem; font-size: 0.8125rem; color: var(--text-muted);">Mon—Fri: 9AM — 6PM CST</p>
-          </div>
-
-          <div class="contact-office">
-            <h3>Beijing</h3>
-            <address>
-              China<br>
-              <a href="tel:+861****5678">+86 10 1234 5678</a><br>
-              <a href="mailto:beijing@petflyinc.com">beijing@petflyinc.com</a>
-            </address>
-            <p style="margin-top: 0.5rem; font-size: 0.8125rem; color: var(--text-muted);">Mon—Fri: 9AM — 6PM CST</p>
-          </div>
-
-          <div class="contact-office">
-            <h3>Chengdu</h3>
-            <address>
-              China<br>
-              <a href="tel:+862****5678">+86 28 1234 5678</a><br>
-              <a href="mailto:chengdu@petflyinc.com">chengdu@petflyinc.com</a>
-            </address>
-            <p style="margin-top: 0.5rem; font-size: 0.8125rem; color: var(--text-muted);">Mon—Fri: 9AM — 6PM CST</p>
-          </div>
+          <% }); %>
         </div>
 
         <div>

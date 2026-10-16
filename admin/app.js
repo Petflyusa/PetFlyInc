@@ -745,13 +745,16 @@ function addService() {
 function renderOfficesItems(offs) {
   var el = document.getElementById('offices-items');
   if (!el) return;
-  if (!offs.length) offs = [{city:'', country:'', type:''}];
+  if (!offs.length) offs = [{city:'', country:'', type:'', phone:'', email:'', hours:''}];
   var html = '';
   offs.forEach(function(o, i) {
-    html += '<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:0.75rem;margin-bottom:0.75rem;align-items:end;">' +
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;align-items:end;">' +
       '<input type="text" class="field-input" data-section="offices" data-key="' + i + '_city" placeholder="City" value="' + escHtml(o.city || '') + '">' +
       '<input type="text" class="field-input" data-section="offices" data-key="' + i + '_country" placeholder="Country" value="' + escHtml(o.country || '') + '">' +
       '<input type="text" class="field-input" data-section="offices" data-key="' + i + '_type" placeholder="Type (e.g. HQ)" value="' + escHtml(o.type || '') + '">' +
+      '<input type="text" class="field-input" data-section="offices" data-key="' + i + '_phone" placeholder="Phone" value="' + escHtml(o.phone || '') + '">' +
+      '<input type="email" class="field-input" data-section="offices" data-key="' + i + '_email" placeholder="Email" value="' + escHtml(o.email || '') + '">' +
+      '<input type="text" class="field-input" data-section="offices" data-key="' + i + '_hours" placeholder="Hours" value="' + escHtml(o.hours || '') + '">' +
     '</div>';
   });
   el.innerHTML = html;
@@ -767,7 +770,7 @@ function addOffice() {
     if (!offs[idx]) offs[idx] = {};
     offs[idx][prop] = inp.value;
   });
-  offs.push({city:'', country:'', type:''});
+  offs.push({city:'', country:'', type:'', phone:'', email:'', hours:''});
   renderOfficesItems(offs);
 }
 
