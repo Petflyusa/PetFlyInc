@@ -34,6 +34,8 @@ const { getPublicKnowledge, renderLlmsText } = require('./lib/ai-knowledge');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const isProduction = process.env.NODE_ENV === 'production';
+if (isProduction) app.set('trust proxy', 1);
 const contentCache = createTtlCache();
 const publicFormRateLimiter = createRateLimiter();
 const contentCacheTtlMs = 5 * 60 * 1000;
@@ -226,13 +228,13 @@ app.get('/llms.txt', (req, res) => {
 // Session
 app.use(session({
   key: 'petfly_sess',
-  secret: process.env.SESSION_SECRET || 'dev_secret_change_in_production',
+  secret: process.env.SESSION_SECRET || (isProduction ? (() => { throw new Error('SESSION_SECRET must be configured in production.'); })() : 'dev_secret_change_in_production'),
   store: sessionStore,
   resave: false,
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
-    secure: false, // disable until HTTPS is configured
+    secure: isProduction,
     sameSite: 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
   }
