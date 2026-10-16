@@ -185,6 +185,8 @@ const sessionStore = new MySQLStore({
 // ── Middleware ─────────────────────────────────────────────────────────────
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  frameguard: { action: 'deny' },
   // The existing EJS pages and admin SPA use inline scripts and handlers.
   contentSecurityPolicy: {
     directives: {
@@ -198,6 +200,7 @@ app.use(compression());
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 app.use((req, res, next) => {
+  res.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   res.locals.canonicalUrl = `${getSiteUrl()}${req.path === '/' ? '/' : req.path}`;
   res.locals.seo = getSeoMetadata(req.path, getSiteUrl());
   if (/^\/(admin|portal|dashboard|partner|login|register|verify)(?:\/|$)/.test(req.path)) {
@@ -457,6 +460,20 @@ function allowPublicForm(req, formName, limit = 5) {
   return publicFormRateLimiter.allow(`${formName}:${req.ip}`, limit, 60 * 60 * 1000);
 }
 
+function allowAuthAttempt(req, formName, limit = 10) {
+  return publicFormRateLimiter.allow(`auth:${formName}:${req.ip}`, limit, 15 * 60 * 1000);
+}
+
+function rotateSession(req, values) {
+  return new Promise((resolve, reject) => {
+    req.session.regenerate(err => {
+      if (err) return reject(err);
+      Object.assign(req.session, values);
+      resolve();
+    });
+  });
+}
+
 // ── View Helpers ─────────────────────────────────────────────────────────────
 app.locals.currentYear = new Date().getFullYear();
 
@@ -610,6 +627,7 @@ app.get('/register', async (req, res) => {
 });
 
 app.post('/register', async (req, res) => {
+  if (!allowAuthAttempt(req, 'member-register', 5)) return res.status(429).render('register', { footer: await getFooter(), error: 'Too many registration attempts. Please try again later.' });
   const email = String(req.body.email || '').trim().toLowerCase();
   const firstName = String(req.body.first_name || '').trim();
   const lastName = String(req.body.last_name || '').trim();
@@ -649,6 +667,7 @@ app.get('/login', async (req, res) => {
 });
 
 app.post('/resend-verification', async (req, res) => {
+  if (!allowAuthAttempt(req, 'resend-verification', 3)) return res.status(429).render('login', { footer: await getFooter(), error: 'Too many verification requests. Please try again later.' });
   const email = String(req.body.email || '').trim().toLowerCase();
   if (/^\S+@\S+\.\S+$/.test(email)) {
     try {
@@ -666,13 +685,13 @@ app.post('/resend-verification', async (req, res) => {
 app.post('/login', async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase();
   const password = String(req.body.password || '');
+  if (!allowAuthAttempt(req, 'member-login')) return res.status(429).render('login', { footer: await getFooter(), error: 'Too many sign-in attempts. Please try again later.' });
   try {
     const rows = await query('SELECT id, email, password_hash, is_verified FROM members WHERE email=?', [email]);
     const member = rows[0];
     if (!member || !await bcrypt.compare(password, member.password_hash)) return res.status(401).render('login', { footer: await getFooter(), error: 'Invalid email or password.' });
     if (!member.is_verified) return res.status(403).render('login', { footer: await getFooter(), error: 'Please verify your email before signing in.' });
-    req.session.memberId = member.id;
-    req.session.memberEmail = member.email;
+    await rotateSession(req, { memberId: member.id, memberEmail: member.email });
     const next = String(req.body.next || '');
     res.redirect(next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard');
   } catch (err) { console.error('[PetConnect login]', err); res.status(500).render('login', { footer: await getFooter(), error: 'Unable to sign in right now.' }); }
@@ -884,6 +903,7 @@ app.get('/partners', async (req, res) => {
 app.get('/partner/register', async (req, res) => res.render('partner-register', { footer: await petConnectFooter(), types: await query('SELECT id, label FROM partner_types ORDER BY label'), error: null }));
 
 app.post('/partner/register', async (req, res) => {
+  if (!allowAuthAttempt(req, 'partner-register', 5)) return res.status(429).render('partner-register', { footer: await petConnectFooter(), types: await query('SELECT id, label FROM partner_types ORDER BY label'), error: 'Too many registration attempts. Please try again later.' });
   const email = String(req.body.email || '').trim().toLowerCase();
   const types = await query('SELECT id FROM partner_types WHERE id=?', [req.body.partner_type_id]);
   if (!types.length || !email || !req.body.company_name || !req.body.contact_name || !req.body.city) return res.status(400).render('partner-register', { footer: await petConnectFooter(), types: await query('SELECT id, label FROM partner_types ORDER BY label'), error: 'Complete all required fields.' });
@@ -902,14 +922,16 @@ app.get('/partner/login', async (req, res) => res.render('partner-login', { foot
 app.post('/partner/login', async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase();
   const password = String(req.body.password || '');
+  if (!allowAuthAttempt(req, 'partner-login')) return res.status(429).render('partner-login', { footer: await petConnectFooter(), error: 'Too many sign-in attempts. Please try again later.' });
   const partners = await query('SELECT id, password_hash, is_verified, is_active FROM rescue_partners WHERE email=?', [email]);
   const partner = partners[0];
   if (!partner || !partner.password_hash || !await bcrypt.compare(password, partner.password_hash)) return res.status(401).render('partner-login', { footer: await petConnectFooter(), error: 'Invalid email or password.' });
   if (!partner.is_verified || !partner.is_active) return res.status(403).render('partner-login', { footer: await petConnectFooter(), error: 'This partner account is not currently active.' });
-  req.session.partnerId = partner.id;
+  await rotateSession(req, { partnerId: partner.id });
   res.redirect('/partner/dashboard');
 });
 app.post('/partner/claim', async (req, res) => {
+  if (!allowAuthAttempt(req, 'partner-claim', 3)) return res.status(429).render('partner-claim', { footer: await petConnectFooter(), error: 'Too many claim requests. Please try again later.', sent: false });
   const email = String(req.body.email || '').trim().toLowerCase();
   const partners = await query('SELECT verify_token FROM rescue_partners WHERE email=?', [email]);
   if (partners[0] && partners[0].verify_token) await sendEmail(email, 'Claim your PetConnect partner account', `<p><a href="${getSiteUrl()}/partner/claim/${partners[0].verify_token}">Set your password</a></p>`);
@@ -917,12 +939,13 @@ app.post('/partner/claim', async (req, res) => {
 });
 app.get('/partner/claim/:token', async (req, res) => res.render('partner-claim-token', { footer: await petConnectFooter(), token: req.params.token, error: null }));
 app.post('/partner/claim/:token', async (req, res) => {
+  if (!allowAuthAttempt(req, 'partner-claim-token', 5)) return res.status(429).render('partner-claim-token', { footer: await petConnectFooter(), token: req.params.token, error: 'Too many attempts. Please try again later.' });
   const password = String(req.body.password || '');
   if (password.length < 8 || password !== String(req.body.confirm_password || '')) return res.status(400).render('partner-claim-token', { footer: await petConnectFooter(), token: req.params.token, error: 'Passwords must match and contain at least 8 characters.' });
   const partners = await query('SELECT id FROM rescue_partners WHERE verify_token=? AND (invitation_expires_at IS NULL OR invitation_expires_at > NOW())', [req.params.token]);
   if (!partners.length) return res.status(400).render('partner-claim-token', { footer: await petConnectFooter(), token: req.params.token, error: 'This claim link is invalid or expired.' });
   await query('UPDATE rescue_partners SET password_hash=?, is_verified=TRUE, is_active=TRUE, verify_token=NULL, invitation_expires_at=NULL WHERE id=?', [await bcrypt.hash(password, 12), partners[0].id]);
-  req.session.partnerId = partners[0].id;
+  await rotateSession(req, { partnerId: partners[0].id });
   res.redirect('/partner/dashboard');
 });
 app.get('/partner/dashboard', requirePartner, async (req, res) => {
@@ -1166,13 +1189,16 @@ app.post('/portal/login', async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase();
   const password = String(req.body.password || '');
   if (!email || !password) return res.status(400).render('portal-login', { error: 'Email and password are required.' });
+  if (!allowAuthAttempt(req, 'portal-login')) return res.status(429).render('portal-login', { error: 'Too many sign-in attempts. Please try again later.' });
   try {
     const rows = await query('SELECT id, email, password_hash, must_change_password FROM client_accounts WHERE email=?', [email]);
     const account = rows[0];
     if (!account || !await bcrypt.compare(password, account.password_hash)) return res.status(401).render('portal-login', { error: 'Invalid email or password.' });
-    req.session.clientAccountId = account.id;
-    req.session.clientAccountEmail = account.email;
-    req.session.clientMustChangePassword = Boolean(account.must_change_password);
+    await rotateSession(req, {
+      clientAccountId: account.id,
+      clientAccountEmail: account.email,
+      clientMustChangePassword: Boolean(account.must_change_password)
+    });
     return res.redirect(account.must_change_password ? '/portal/change-password' : '/portal');
   } catch (err) {
     console.error('[Portal login]', err);
@@ -1319,6 +1345,7 @@ app.post('/api/contracts/:contractNumber/sign', async (req, res) => {
   const contractNumber = req.params.contractNumber.trim().toUpperCase();
   const { contract_data, signature, signed_name, accepted_terms } = req.body;
   if (!accepted_terms || !signature || !signed_name) return res.status(400).json({ error: 'Your full name, signature, and acceptance are required.' });
+  if (!allowPublicForm(req, 'contract-sign', 5)) return res.status(429).json({ error: 'Too many signing attempts. Please try again later.' });
   try {
     const rows = await query('SELECT id, status, contract_data FROM contracts WHERE contract_number = ?', [contractNumber]);
     if (!rows.length || rows[0].status === 'draft') return res.status(404).json({ error: 'Contract not found or not issued.' });
@@ -1439,6 +1466,7 @@ app.get('/admin/login', (req, res) => {
 app.post('/admin/login', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ success: false, error: 'Username and password required.' });
+  if (!allowAuthAttempt(req, 'admin-login')) return res.status(429).json({ success: false, error: 'Too many sign-in attempts. Please try again later.' });
 
   try {
     const rows = await query('SELECT * FROM admins WHERE username = ?', [username]);
@@ -1448,8 +1476,7 @@ app.post('/admin/login', async (req, res) => {
     const match = await bcrypt.compare(password, admin.password_hash);
     if (!match) return res.json({ success: false, error: 'Invalid credentials.' });
 
-    req.session.adminId = admin.id;
-    req.session.adminUsername = admin.username;
+    await rotateSession(req, { adminId: admin.id, adminUsername: admin.username });
     await query('UPDATE admins SET last_login = NOW() WHERE id = ?', [admin.id]);
 
     res.json({ success: true });

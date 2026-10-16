@@ -27,3 +27,20 @@ test('scopes portal relocation queries to the signed-in account and omits intern
   assert.match(clientDetailRoute, /SELECT id, status_step, client_note, occurred_at FROM relocation_updates/);
   assert.doesNotMatch(clientDetailRoute, /SELECT[^;]*internal_note[^;]*FROM relocation_updates/);
 });
+
+test('hardens authentication and sensitive state-changing endpoints', () => {
+  const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+
+  assert.match(server, /function allowAuthAttempt\(req, formName, limit = 10\)/);
+  assert.match(server, /function rotateSession\(req, values\)/);
+  assert.match(server, /allowAuthAttempt\(req, 'admin-login'\)/);
+  assert.match(server, /allowAuthAttempt\(req, 'member-login'\)/);
+  assert.match(server, /allowAuthAttempt\(req, 'portal-login'\)/);
+  assert.match(server, /allowAuthAttempt\(req, 'partner-login'\)/);
+  assert.match(server, /rotateSession\(req, \{ adminId: admin\.id, adminUsername: admin\.username \}\)/);
+  assert.match(server, /rotateSession\(req, \{ memberId: member\.id, memberEmail: member\.email \}\)/);
+  assert.match(server, /allowPublicForm\(req, 'contract-sign', 5\)/);
+  assert.match(server, /res\.set\('Permissions-Policy', 'camera=\(\), microphone=\(\), geolocation=\(\)'\)/);
+  assert.match(server, /referrerPolicy: \{ policy: 'strict-origin-when-cross-origin' \}/);
+  assert.match(server, /frameguard: \{ action: 'deny' \}/);
+});
