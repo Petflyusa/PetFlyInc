@@ -35,3 +35,15 @@ test('connects the service landing pages to the server, sitemap, and service pag
     assert.match(services, new RegExp(route));
   }
 });
+
+test('keeps homepage service media local and includes the ADI partner service copy', () => {
+  const root = path.join(__dirname, '..');
+  const home = fs.readFileSync(path.join(root, 'views', 'index.ejs'), 'utf8');
+  const services = fs.readFileSync(path.join(root, 'views', 'service.ejs'), 'utf8');
+
+  assert.match(home, /src="\/images\/hero-bg\.jpg"[^>]+alt="Happy dog receiving attentive pet transport care"/);
+  assert.doesNotMatch(home, /images\.unsplash\.com/);
+  assert.match(home, /ADI-Partner Service Animal Card/);
+  assert.match(services, /Assistance Dogs International \(ADI\) accredits programs/);
+  assert.match(services, /does not create one universal service-animal registration card/);
+});
