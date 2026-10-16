@@ -144,6 +144,15 @@ body {
   font-weight: 500;
   color: var(--cream);
 }
+.analytics-controls { display:flex; align-items:center; gap:.5rem; color:var(--text-muted); font-size:.8125rem; }
+.analytics-controls select { background:#1a1a1a; color:var(--cream); border:1px solid var(--border); padding:.45rem .6rem; font:inherit; }
+.analytics-note { color:var(--text-muted); margin:-.75rem 0 1.25rem; font-size:.85rem; }
+.analytics-note i { color:#7fc294; margin-right:.35rem; }
+.analytics-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin:1rem 0; }
+.analytics-panel { background:#141414; border:1px solid var(--border); padding:1rem; margin-bottom:1rem; min-width:0; }
+.analytics-panel h2 { font-size:1rem; font-weight:500; margin-bottom:1rem; }
+.table-scroll { overflow-x:auto; }
+@media (max-width: 760px) { .analytics-controls { flex-wrap:wrap; justify-content:flex-end; } .analytics-grid { grid-template-columns:1fr; } }
 
 /* ── Buttons ── */
 .btn-primary-sm {

@@ -53,6 +53,7 @@ function showSection(name) {
   if (name === 'dashboard') loadDashboard();
   if (name === 'quotes') loadQuotes();
   if (name === 'contacts') loadContacts();
+  if (name === 'analytics') loadVisitorAnalytics();
   if (name === 'contracts') loadContracts();
   if (name === 'email-center') loadEmailTemplates();
   if (name === 'petconnect-overview') loadPetConnectOverview();
@@ -64,6 +65,26 @@ function showSection(name) {
   if (name === 'countries') loadCountries();
   if (name === 'airlines') loadAirlines();
 }
+
+async function loadVisitorAnalytics() {
+  try {
+    var days = document.getElementById('analyticsDays').value;
+    var response = await fetch('/api/admin/analytics/visitors?days=' + encodeURIComponent(days), creds);
+    var data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Could not load visitor analytics.');
+    document.getElementById('analyticsVisits').textContent = Number(data.summary.visits || 0).toLocaleString();
+    document.getElementById('analyticsUnique').textContent = Number(data.summary.unique_visitors || 0).toLocaleString();
+    document.getElementById('analyticsActive').textContent = Number(data.summary.active_24h || 0).toLocaleString();
+    document.getElementById('analyticsPages').innerHTML = analyticsTable(['Page', 'Visits', 'Unique'], (data.pages || []).map(function(row) { return [row.path, row.visits, row.unique_visitors]; }));
+    document.getElementById('analyticsLocations').innerHTML = analyticsTable(['Country', 'City', 'Visits'], (data.locations || []).map(function(row) { return [row.country, row.city, row.visits]; }));
+    document.getElementById('analyticsRecent').innerHTML = analyticsTable(['Time', 'Page', 'Location', 'Referrer', 'Account'], (data.recent || []).map(function(row) { return [fmtDateTime(row.visited_at), row.path, [row.city, row.country].filter(Boolean).join(', ') || 'Unknown', row.referrer || 'Direct', row.account_type || 'Guest']; }));
+  } catch (error) { showToast(error.message, 'error'); }
+}
+function analyticsTable(headers, rows) {
+  if (!rows.length) return '<div class="empty-state"><i class="fas fa-chart-line"></i>No visits recorded for this period.</div>';
+  return '<div class="table-scroll"><table class="data-table"><thead><tr>' + headers.map(function(header) { return '<th>' + escHtml(header) + '</th>'; }).join('') + '</tr></thead><tbody>' + rows.map(function(row) { return '<tr>' + row.map(function(value) { return '<td>' + escHtml(value) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
+}
+function fmtDateTime(value) { if (!value) return '—'; var date = new Date(String(value).replace(' ', 'T') + 'Z'); return date.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }); }
 
 async function loadEmailTemplates() { try { var response=await fetch('/api/admin/email-templates',creds),data=await response.json();if(!response.ok)throw new Error(data.error||'Could not load email templates.');state.emailTemplates=data.templates||[];var list=document.getElementById('emailTemplateList');list.innerHTML=state.emailTemplates.map(function(t){return '<button class="email-template-item" onclick="previewEmailTemplate(\''+escHtml(t.id)+'\')">'+escHtml(t.label)+'</button>';}).join('');var health=await fetch('/api/admin/email-health',creds),status=await health.json(),target=document.getElementById('emailCenterHealth');target.textContent=status.success?'SMTP status: connected and authenticated.':'SMTP status: '+(status.error||'unavailable');target.className='email-center-health '+(status.success?'is-ok':'is-error');if(state.emailTemplates.length)previewEmailTemplate(state.selectedEmailTemplate||state.emailTemplates[0].id);}catch(error){showToast(error.message,'error');} }
 async function previewEmailTemplate(id) { try { var response=await fetch('/api/admin/email-templates/'+encodeURIComponent(id)+'/preview',creds),data=await response.json();if(!response.ok)throw new Error(data.error||'Could not load email preview.');state.selectedEmailTemplate=id;document.getElementById('emailTemplateSubject').textContent=data.subject;document.getElementById('emailTemplatePreview').srcdoc=data.html;document.getElementById('emailTemplateText').textContent=data.text;document.querySelectorAll('.email-template-item').forEach(function(button){button.classList.toggle('active',button.getAttribute('onclick').indexOf("'"+id+"'")>-1);});}catch(error){showToast(error.message,'error');} }

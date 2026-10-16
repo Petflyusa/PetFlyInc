@@ -29,6 +29,7 @@ const { createRateLimiter } = require('./lib/request-rate-limit');
 const { enqueueEmail, processNextEmail } = require('./lib/email-queue');
 const { getSeoMetadata } = require('./lib/seo');
 const { serviceLandingByPath } = require('./lib/service-landings');
+const { buildVisit, shouldTrack } = require('./lib/visitor-analytics');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -228,6 +229,15 @@ app.use(session({
     maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
   }
 }));
+
+// Track public page visits without storing raw IP addresses. Analytics failures
+// must never make a public page unavailable.
+app.use((req, res, next) => {
+  if (!shouldTrack(req)) return next();
+  const visit = buildVisit(req, process.env.ANALYTICS_SECRET || process.env.SESSION_SECRET);
+  query('INSERT INTO visitor_visits (visitor_key, path, referrer, country, city, user_agent, account_type, account_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [visit.visitorKey, visit.path, visit.referrer, visit.country, visit.city, visit.userAgent, visit.accountType, visit.accountId]).catch(err => console.warn('[Visitor analytics]', err.message));
+  next();
+});
 
 // ── File Upload ─────────────────────────────────────────────────────────────
 const upload = multerModule({
@@ -1442,6 +1452,31 @@ app.post('/admin/logout', (req, res) => {
 
 app.get('/admin/me', (req, res) => {
   res.json({ loggedIn: !!(req.session && req.session.adminId) });
+});
+
+app.get('/api/admin/analytics/visitors', requireAdmin, async (req, res) => {
+  const days = Math.min(90, Math.max(1, Number.parseInt(req.query.days, 10) || 30));
+  try {
+    const [summary, pages, locations, recent] = await Promise.all([
+      query(`SELECT COUNT(*) AS visits, COUNT(DISTINCT visitor_key) AS unique_visitors,
+        COUNT(DISTINCT CASE WHEN visited_at >= DATE_SUB(NOW(), INTERVAL 1 DAY) THEN visitor_key END) AS active_24h
+        FROM visitor_visits WHERE visited_at >= DATE_SUB(NOW(), INTERVAL ? DAY)`, [days]),
+      query(`SELECT path, COUNT(*) AS visits, COUNT(DISTINCT visitor_key) AS unique_visitors
+        FROM visitor_visits WHERE visited_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+        GROUP BY path ORDER BY visits DESC LIMIT 20`, [days]),
+      query(`SELECT COALESCE(NULLIF(country, ''), 'Unknown') AS country, COALESCE(NULLIF(city, ''), 'Unknown') AS city,
+        COUNT(*) AS visits, COUNT(DISTINCT visitor_key) AS unique_visitors
+        FROM visitor_visits WHERE visited_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+        GROUP BY country, city ORDER BY visits DESC LIMIT 30`, [days]),
+      query(`SELECT visited_at, path, country, city, referrer, account_type
+        FROM visitor_visits WHERE visited_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+        ORDER BY visited_at DESC LIMIT 50`, [days])
+    ]);
+    res.json({ days, summary: summary[0] || { visits: 0, unique_visitors: 0, active_24h: 0 }, pages, locations, recent });
+  } catch (err) {
+    console.error('[Visitor analytics API]', err.message);
+    res.status(500).json({ error: 'Unable to load visitor analytics.' });
+  }
 });
 
 app.get('/api/admin/email-health', requireAdmin, async (req, res) => {

@@ -37,6 +37,9 @@
         <i class="fas fa-envelope"></i> Contact Messages
         <span class="badge" id="badgeContacts">0</span>
       </button>
+      <button class="nav-btn" data-section="analytics" onclick="showSection('analytics')">
+        <i class="fas fa-chart-line"></i> Visitor Analytics
+      </button>
       <button class="nav-btn" data-section="contracts" onclick="showSection('contracts')">
         <i class="fas fa-file-signature"></i> Contracts
       </button>
@@ -132,6 +135,14 @@
         <button class="btn-outline" onclick="loadContacts()"><i class="fas fa-sync"></i> Refresh</button>
       </div>
       <div id="contactsTable"></div>
+    </section>
+
+    <section id="section-analytics" class="admin-section">
+      <div class="section-header"><h1>Visitor Analytics</h1><div class="analytics-controls"><label for="analyticsDays">Period</label><select id="analyticsDays" onchange="loadVisitorAnalytics()"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option></select><button class="btn-outline" onclick="loadVisitorAnalytics()"><i class="fas fa-sync"></i> Refresh</button></div></div>
+      <p class="analytics-note"><i class="fas fa-shield-alt"></i> Visitor IP addresses are not stored. Location is shown only when provided by the hosting platform.</p>
+      <div class="stats-row"><div class="stat-card"><div class="stat-icon" style="background:#f5f0e8;color:#c4622d;"><i class="fas fa-eye"></i></div><div><div class="stat-num" id="analyticsVisits">0</div><div class="stat-lbl">Page visits</div></div></div><div class="stat-card"><div class="stat-icon" style="background:#f5f0e8;color:#c4622d;"><i class="fas fa-users"></i></div><div><div class="stat-num" id="analyticsUnique">0</div><div class="stat-lbl">Unique visitors</div></div></div><div class="stat-card"><div class="stat-icon" style="background:#f5f0e8;color:#c4622d;"><i class="fas fa-user-clock"></i></div><div><div class="stat-num" id="analyticsActive">0</div><div class="stat-lbl">Unique visitors, 24h</div></div></div></div>
+      <div class="analytics-grid"><div class="analytics-panel"><h2>Top pages</h2><div id="analyticsPages"></div></div><div class="analytics-panel"><h2>Where visitors access from</h2><div id="analyticsLocations"></div></div></div>
+      <div class="analytics-panel"><h2>Recent visits</h2><div id="analyticsRecent"></div></div>
     </section>
 
     <!-- Contracts -->
