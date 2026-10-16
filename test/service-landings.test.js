@@ -43,7 +43,7 @@ test('keeps homepage service media local and includes the ADI partner service co
 
   assert.match(home, /src="\/images\/hero-bg\.jpg"[^>]+alt="Happy dog receiving attentive pet transport care"/);
   assert.doesNotMatch(home, /images\.unsplash\.com/);
-  assert.match(home, /ADI-Partner Service Animal Card/);
+  assert.doesNotMatch(home, /ADI-Partner Service Animal Card/);
   assert.match(services, /Assistance Dogs International \(ADI\) accredits programs/);
   assert.match(services, /does not create one universal service-animal registration card/);
 });
