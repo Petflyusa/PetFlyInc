@@ -64,11 +64,13 @@
       </div>
       <div class="services-grid">
         <% svcs.forEach(svc => { %>
-          <div class="service-item">
+          <% const isImportExportService = /import\s*(&|and)?\s*export|import|export/i.test(String(svc.title || '')); %>
+          <% if (isImportExportService) { %><a class="service-item service-item-link" href="/import-brokerage"><% } else { %><div class="service-item"><% } %>
             <div class="service-icon"><i class="fas <%= svc.icon %>"></i></div>
             <h3><%= svc.title %></h3>
             <p><%= svc.desc %></p>
-          </div>
+            <% if (isImportExportService) { %><span class="service-item-link__action">Request import brokerage support <i class="fas fa-arrow-right" aria-hidden="true"></i></span><% } %>
+          <% if (isImportExportService) { %></a><% } else { %></div><% } %>
         <% }); %>
         <% if (!svcs.some(svc => String(svc.title || '').toLowerCase() === 'petconnect')) { %>
           <a class="service-item service-item-link" href="/registry">

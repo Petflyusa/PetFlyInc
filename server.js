@@ -15,6 +15,7 @@ const { blankContractData, createContractNumber, canEditContract, mergeClientCon
 const { ensureContractSchema, sendContractDatabaseError } = require('./lib/contract-database');
 const { ensureQuoteSchema } = require('./lib/quote-database');
 const { ensureImportBrokerageSchema } = require('./lib/import-brokerage-database');
+const { worldCountries } = require('./lib/world-countries');
 const { ensurePetConnectSchema } = require('./lib/petconnect-database');
 const { generateContractPdf } = require('./lib/contract-pdf');
 const { documentCategories, documentExpiryStatus, isActiveRelocation, normalizeYouTubeUrl, relocationSteps } = require('./lib/portal');
@@ -511,7 +512,7 @@ app.get('/quote', async (req, res) => {
 // Worldwide import brokerage request form
 app.get('/import-brokerage', async (req, res) => {
   const footer = await getFooter();
-  res.render('import-brokerage', { footer });
+  res.render('import-brokerage', { footer, countries: worldCountries() });
 });
 
 // Contact
@@ -1479,6 +1480,8 @@ app.post('/api/import-brokerage', async (req, res) => {
   const breed = clean(body.breed, 160);
   const microchip = clean(body.microchip, 64);
   const document_status = clean(body.document_status, 120);
+  const airway_bill_number = clean(body.airway_bill_number, 80);
+  const airline = clean(body.airline, 160);
   const flight_details = clean(body.flight_details, 255);
   const notes = clean(body.notes, 5000);
   const requested_services = Array.isArray(body.requested_services)
@@ -1498,18 +1501,18 @@ app.post('/api/import-brokerage', async (req, res) => {
   try {
     await query(`INSERT INTO import_brokerage_requests
       (full_name, email, phone, import_country, import_city_port, origin_country, estimated_arrival_date,
-       pet_type, pet_name, breed, pet_count, microchip, document_status, flight_details, requested_services, notes)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+       pet_type, pet_name, breed, pet_count, microchip, document_status, airway_bill_number, airline, flight_details, requested_services, notes)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [full_name, email, phone || null, import_country, import_city_port || null, origin_country || null,
        estimated_arrival_date || null, pet_type || null, pet_name || null, breed || null, pet_count,
-       microchip || null, document_status || null, flight_details || null, requested_services || null, notes || null]);
+       microchip || null, document_status || null, airway_bill_number || null, airline || null, flight_details || null, requested_services || null, notes || null]);
 
     const siteUrl = getSiteUrl();
     const details = [
       ['Phone', phone], ['Import country', import_country], ['Import city / port', import_city_port],
       ['Origin country', origin_country], ['Estimated arrival', estimated_arrival_date],
       ['Pet', [pet_type, pet_name, breed].filter(Boolean).join(' - ')], ['Pet count', pet_count],
-      ['Microchip', microchip], ['Documents', document_status], ['Flight details', flight_details],
+      ['Microchip', microchip], ['Documents', document_status], ['Air waybill number', airway_bill_number], ['Airline', airline], ['Flight details', flight_details],
       ['Requested services', requested_services], ['Notes', notes]
     ].filter(([, value]) => value);
     const internal = emailTemplates.internalImportBrokerageNotification({ name: full_name, email, details, siteUrl });

@@ -386,7 +386,7 @@ function renderImportBrokerage() {
 }
 function viewImportBrokerage(id) {
   var r = state.importBrokerage.find(function(item) { return item.id === id; }); if (!r) return;
-  var lines = [['Name', r.full_name], ['Email', r.email], ['Phone', r.phone], ['Origin country', r.origin_country], ['Import country', r.import_country], ['Import city / port', r.import_city_port], ['Estimated arrival', r.estimated_arrival_date], ['Pet', [r.pet_type, r.pet_name, r.breed].filter(Boolean).join(' — ')], ['Pet count', r.pet_count], ['Microchip', r.microchip], ['Documents', r.document_status], ['Flight details', r.flight_details], ['Requested services', r.requested_services]].filter(function(pair) { return pair[1]; });
+  var lines = [['Name', r.full_name], ['Email', r.email], ['Phone', r.phone], ['Origin country', r.origin_country], ['Import country', r.import_country], ['Import city / port', r.import_city_port], ['Estimated arrival', r.estimated_arrival_date], ['Pet', [r.pet_type, r.pet_name, r.breed].filter(Boolean).join(' — ')], ['Pet count', r.pet_count], ['Microchip', r.microchip], ['Documents', r.document_status], ['Air waybill number', r.airway_bill_number], ['Airline', r.airline], ['Flight details', r.flight_details], ['Requested services', r.requested_services]].filter(function(pair) { return pair[1]; });
   var html = '<div class="form-row">' + lines.map(function(pair) { return '<div class="form-group"><label>' + escHtml(pair[0]) + '</label><span>' + escHtml(pair[1]) + '</span></div>'; }).join('') + '</div>';
   if (r.notes) html += '<div class="form-group full"><label>Additional details</label><p style="white-space:pre-wrap;line-height:1.6;">' + escHtml(r.notes) + '</p></div>';
   openModal('Import Brokerage Request — ' + r.full_name, html);
