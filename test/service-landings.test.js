@@ -47,3 +47,13 @@ test('keeps homepage service media local and includes the ADI partner service co
   assert.match(services, /Assistance Dogs International \(ADI\) accredits programs/);
   assert.match(services, /does not create one universal service-animal registration card/);
 });
+
+test('uses the supplied local service images in their matching service positions', () => {
+  const root = path.join(__dirname, '..');
+  const services = fs.readFileSync(path.join(root, 'views', 'service.ejs'), 'utf8');
+  for (const filename of ['Service_PetTravel.jpg', 'Service_Documentations.jpg', 'Service_PetKennel.jpg']) {
+    assert.equal(fs.existsSync(path.join(root, 'public', 'images', filename)), true);
+    assert.match(services, new RegExp(`/images/${filename}`));
+  }
+  assert.doesNotMatch(services, /images\.unsplash\.com/);
+});
