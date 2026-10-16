@@ -1,0 +1,51 @@
+<%- include('partials/header', { currentPage: 'import-brokerage' }) %>
+
+<section class="page-header" style="color:var(--cream);">
+  <div class="container">
+    <span class="section-label">Worldwide Import Brokerage</span>
+    <h1 style="color:var(--cream);">Bring your pet home,<br>with the right help.</h1>
+    <p style="color:rgba(247,245,240,.75);">Tell us where your pet is coming from and the country of import. We’ll review the destination requirements and coordinate the brokerage support your journey needs.</p>
+  </div>
+</section>
+
+<section class="section"><div class="container"><div class="quote-layout">
+  <aside class="quote-aside">
+    <span class="section-label">How it works</span>
+    <h2>One request for any destination.</h2>
+    <p>Import rules vary by country, species, airline, and route. Pet Fly Inc can help review documents, coordinate with customs and handling partners, and explain the next steps for your specific destination.</p>
+    <ul class="feature-list" style="margin-top:var(--space-md);"><li>Worldwide destination support</li><li>Import permit and document review</li><li>Customs, airport, and quarantine guidance</li><li>Clear scope, fees, and availability before work begins</li></ul>
+    <p style="margin-top:var(--space-lg);font-size:.9rem;color:var(--text-muted);">Submitting this form starts a review. It does not guarantee customs clearance, an import permit, or an authority decision.</p>
+  </aside>
+  <div class="form-container" id="formContent">
+    <form id="importBrokerageForm" onsubmit="submitImportBrokerage(event)">
+      <span class="section-label">Your details</span>
+      <div class="form-grid">
+        <div class="form-group"><label for="full_name">Full name *</label><input id="full_name" name="full_name" class="form-control" required maxlength="160" autocomplete="name"></div>
+        <div class="form-group"><label for="email">Email *</label><input id="email" name="email" type="email" class="form-control" required maxlength="254" autocomplete="email"></div>
+        <div class="form-group"><label for="phone">Phone</label><input id="phone" name="phone" type="tel" class="form-control" maxlength="64" autocomplete="tel"></div>
+        <div class="form-group"><label for="origin_country">Origin country *</label><input id="origin_country" name="origin_country" class="form-control" required maxlength="120" placeholder="Where is your pet now?"></div>
+        <div class="form-group"><label for="import_country">Import country *</label><select id="import_country" name="import_country" class="form-control" required><option value="">Select destination country</option><option>Australia</option><option>Brazil</option><option>Canada</option><option>China</option><option>France</option><option>Germany</option><option>Hong Kong</option><option>India</option><option>Japan</option><option>Mexico</option><option>New Zealand</option><option>Singapore</option><option>South Korea</option><option>Spain</option><option>Switzerland</option><option>Thailand</option><option>United Arab Emirates</option><option>United Kingdom</option><option>United States</option><option>Other country</option></select></div>
+        <div class="form-group"><label for="import_city_port">Import city, airport, or port</label><input id="import_city_port" name="import_city_port" class="form-control" maxlength="160" placeholder="Optional"></div>
+        <div class="form-group"><label for="estimated_arrival_date">Estimated arrival date</label><input id="estimated_arrival_date" name="estimated_arrival_date" type="date" class="form-control"></div>
+      </div>
+      <span class="section-label" style="display:block;margin-top:var(--space-lg);">Pet and shipment</span>
+      <div class="form-grid">
+        <div class="form-group"><label for="pet_type">Pet type</label><select id="pet_type" name="pet_type" class="form-control"><option value="">Select</option><option>Dog</option><option>Cat</option><option>Bird</option><option>Rabbit</option><option>Other</option></select></div>
+        <div class="form-group"><label for="pet_count">Number of pets</label><input id="pet_count" name="pet_count" type="number" class="form-control" min="1" max="50" value="1"></div>
+        <div class="form-group"><label for="pet_name">Pet name</label><input id="pet_name" name="pet_name" class="form-control" maxlength="160"></div>
+        <div class="form-group"><label for="breed">Breed</label><input id="breed" name="breed" class="form-control" maxlength="160"></div>
+        <div class="form-group"><label for="microchip">Microchip number</label><input id="microchip" name="microchip" class="form-control" maxlength="64"></div>
+        <div class="form-group"><label for="document_status">Document status</label><select id="document_status" name="document_status" class="form-control"><option value="">Select</option><option>Documents ready</option><option>Some documents ready</option><option>Documents not started</option><option>Not sure what is required</option></select></div>
+        <div class="form-group full"><label for="flight_details">Airline or flight details</label><input id="flight_details" name="flight_details" class="form-control" maxlength="255" placeholder="Optional"></div>
+      </div>
+      <fieldset style="border:0;padding:0;margin-top:var(--space-lg);"><legend class="section-label">Support requested</legend><div class="form-grid"><% ['Import permit / document review','Customs clearance coordination','Airport or port release coordination','Quarantine / inspection guidance','Local delivery coordination'].forEach(function(service) { %><label style="display:flex;gap:.6rem;align-items:center;"><input type="checkbox" name="requested_services" value="<%= service %>"> <%= service %></label><% }) %></div></fieldset>
+      <div class="form-group" style="margin-top:var(--space-lg);"><label for="notes">Additional details</label><textarea id="notes" name="notes" class="form-control" rows="5" maxlength="5000" placeholder="Tell us about timing, prior travel, documents, or anything else we should know."></textarea></div>
+      <div aria-hidden="true" style="position:absolute;left:-10000px;"><label>Fax <input name="fax_only" tabindex="-1" autocomplete="off"></label><label>Email address <input name="email_addr" tabindex="-1" autocomplete="off"></label></div>
+      <button type="submit" class="btn-primary" style="margin-top:var(--space-md);">Send import brokerage request <i class="fas fa-arrow-right"></i></button>
+    </form>
+  </div>
+</div></div></section>
+<script>
+function submitImportBrokerage(event) { event.preventDefault(); var form=event.target, button=form.querySelector('button[type=submit]'); button.disabled=true; button.textContent='Sending…'; var data={}; new FormData(form).forEach(function(value,key){ if(key==='requested_services'){(data[key]||(data[key]=[])).push(value);} else data[key]=value; }); fetch('/api/import-brokerage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).then(function(response){return response.json().then(function(body){if(!response.ok)throw new Error(body.message||'Submission failed');return body;});}).then(function(){document.getElementById('formContent').innerHTML='<div class="success-message"><i class="fas fa-check"></i><h2>Request received</h2><p>Our team will review your destination requirements and contact you within 24 hours.</p></div>';}).catch(function(error){alert(error.message);button.disabled=false;button.textContent='Send import brokerage request';}); }
+</script>
+<%- include('partials/footer', { footer }) %>

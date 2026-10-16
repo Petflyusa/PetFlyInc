@@ -83,11 +83,12 @@
         <ul>
           <li><a href="/" <%= currentPage === 'index' ? 'class="active"' : '' %> data-i18n="nav.home">Home</a></li>
           <li class="services-nav-item">
-            <a href="/service" <%= ['service', 'contract', 'quote'].includes(currentPage) ? 'class="active"' : '' %> data-i18n="nav.services">Services</a>
+            <a href="/service" <%= ['service', 'contract', 'quote', 'import-brokerage'].includes(currentPage) ? 'class="active"' : '' %> data-i18n="nav.services">Services</a>
             <i class="fas fa-chevron-down services-nav-chevron" aria-hidden="true"></i>
             <ul class="services-submenu" aria-label="Services">
               <li><a href="/quote" <%= currentPage === 'quote' ? 'class="active"' : '' %> data-i18n="nav.quote">Quote</a></li>
               <li><a href="/contract" <%= currentPage === 'contract' ? 'class="active"' : '' %> data-i18n="nav.contract">Contract</a></li>
+              <li><a href="/import-brokerage" <%= currentPage === 'import-brokerage' ? 'class="active"' : '' %>>Import Brokerage</a></li>
             </ul>
           </li>
           <li><a href="/registry" <%= currentPage === 'registry' ? 'class="active"' : '' %>>PetConnect</a></li>
@@ -117,6 +118,7 @@
       <a href="/service" data-i18n="nav.services">Services</a>
       <a class="mobile-services-submenu" href="/quote" data-i18n="nav.quote">Quote</a>
       <a class="mobile-services-submenu" href="/contract" data-i18n="nav.contract">Contract</a>
+      <a class="mobile-services-submenu" href="/import-brokerage">Import Brokerage</a>
     </div>
     <a href="/registry" data-i18n="nav.petconnect">PetConnect</a>
     <a href="/regulations" data-i18n="nav.regulations">Regulations</a>

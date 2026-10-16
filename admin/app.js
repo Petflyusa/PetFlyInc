@@ -5,6 +5,7 @@
 var state = {
   quotes: [],
   contacts: [],
+  importBrokerage: [],
   content: {},
   countries: [],
   airlines: [],
@@ -53,6 +54,7 @@ function showSection(name) {
   if (name === 'dashboard') loadDashboard();
   if (name === 'quotes') loadQuotes();
   if (name === 'contacts') loadContacts();
+  if (name === 'import-brokerage') loadImportBrokerage();
   if (name === 'analytics') loadVisitorAnalytics();
   if (name === 'contracts') loadContracts();
   if (name === 'email-center') loadEmailTemplates();
@@ -367,6 +369,30 @@ async function deleteContact(id) {
   loadContacts();
   loadDashboard();
 }
+
+// ── Worldwide import brokerage requests ────────────────────────────────────
+async function loadImportBrokerage() {
+  try { var d = await (await fetch('/api/admin/import-brokerage', creds)).json(); state.importBrokerage = d.requests || []; renderImportBrokerage(); }
+  catch (err) { showToast('Could not load import brokerage requests.', 'error'); }
+}
+function renderImportBrokerage() {
+  var rows = state.importBrokerage, el = document.getElementById('importBrokerageTable');
+  if (!rows.length) { el.innerHTML = '<div class="empty-state"><i class="fas fa-globe"></i>No import brokerage requests yet</div>'; return; }
+  var html = '<table class="data-table"><thead><tr><th>Date</th><th>Client</th><th>Import destination</th><th>Pet / arrival</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+  rows.forEach(function(r) {
+    html += '<tr><td style="white-space:nowrap;">' + fmtDate(r.created_at) + '</td><td><strong>' + escHtml(r.full_name) + '</strong><br><a href="mailto:' + escHtml(r.email) + '">' + escHtml(r.email) + '</a><br>' + escHtml(r.phone || '—') + '</td><td>' + escHtml(r.import_country) + '<br><span class="muted">' + escHtml(r.import_city_port || 'City/port not provided') + '</span></td><td>' + escHtml([r.pet_type, r.pet_name, r.breed].filter(Boolean).join(' · ') || 'Pet details pending') + '<br>' + escHtml(r.estimated_arrival_date || 'Arrival date not provided') + '</td><td><select onchange="saveImportBrokerageStatus(' + r.id + ',this.value)"><option value="pending" ' + (r.status === 'pending' ? 'selected' : '') + '>Pending</option><option value="in_review" ' + (r.status === 'in_review' ? 'selected' : '') + '>In review</option><option value="quoted" ' + (r.status === 'quoted' ? 'selected' : '') + '>Quoted</option><option value="completed" ' + (r.status === 'completed' ? 'selected' : '') + '>Completed</option><option value="cancelled" ' + (r.status === 'cancelled' ? 'selected' : '') + '>Cancelled</option></select></td><td><button class="btn-outline" onclick="viewImportBrokerage(' + r.id + ')" title="View details"><i class="fas fa-eye"></i></button> <button class="btn-danger" onclick="deleteImportBrokerage(' + r.id + ')" title="Delete"><i class="fas fa-trash"></i></button></td></tr>';
+  });
+  el.innerHTML = html + '</tbody></table>';
+}
+function viewImportBrokerage(id) {
+  var r = state.importBrokerage.find(function(item) { return item.id === id; }); if (!r) return;
+  var lines = [['Name', r.full_name], ['Email', r.email], ['Phone', r.phone], ['Origin country', r.origin_country], ['Import country', r.import_country], ['Import city / port', r.import_city_port], ['Estimated arrival', r.estimated_arrival_date], ['Pet', [r.pet_type, r.pet_name, r.breed].filter(Boolean).join(' — ')], ['Pet count', r.pet_count], ['Microchip', r.microchip], ['Documents', r.document_status], ['Flight details', r.flight_details], ['Requested services', r.requested_services]].filter(function(pair) { return pair[1]; });
+  var html = '<div class="form-row">' + lines.map(function(pair) { return '<div class="form-group"><label>' + escHtml(pair[0]) + '</label><span>' + escHtml(pair[1]) + '</span></div>'; }).join('') + '</div>';
+  if (r.notes) html += '<div class="form-group full"><label>Additional details</label><p style="white-space:pre-wrap;line-height:1.6;">' + escHtml(r.notes) + '</p></div>';
+  openModal('Import Brokerage Request — ' + r.full_name, html);
+}
+async function saveImportBrokerageStatus(id, status) { var response = await fetch('/api/admin/import-brokerage/' + id, { ...creds, method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: status }) }); if (!response.ok) showToast('Could not update request.', 'error'); else { showToast('Request status updated.', 'success'); loadImportBrokerage(); } }
+async function deleteImportBrokerage(id) { if (!confirm('Delete this import brokerage request?')) return; await fetch('/api/admin/import-brokerage/' + id, { ...creds, method: 'DELETE' }); showToast('Deleted', 'success'); loadImportBrokerage(); }
 
 // ── Contracts ──────────────────────────────────────────────────────────────
 async function loadContracts() {

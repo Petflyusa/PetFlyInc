@@ -14,6 +14,7 @@ const crypto = require('crypto');
 const { blankContractData, createContractNumber, canEditContract, mergeClientContractData, normalizeContractData } = require('./lib/contracts');
 const { ensureContractSchema, sendContractDatabaseError } = require('./lib/contract-database');
 const { ensureQuoteSchema } = require('./lib/quote-database');
+const { ensureImportBrokerageSchema } = require('./lib/import-brokerage-database');
 const { ensurePetConnectSchema } = require('./lib/petconnect-database');
 const { generateContractPdf } = require('./lib/contract-pdf');
 const { documentCategories, documentExpiryStatus, isActiveRelocation, normalizeYouTubeUrl, relocationSteps } = require('./lib/portal');
@@ -154,7 +155,7 @@ const pool = mysql.createPool({
 
 // Existing databases predate the contracts table. Apply the additive migration
 // at startup so contract issuance is available immediately after a restart.
-Promise.all([ensureContractSchema(pool), ensureQuoteSchema(pool), ensurePetConnectSchema(pool)]).then(() => {
+Promise.all([ensureContractSchema(pool), ensureQuoteSchema(pool), ensureImportBrokerageSchema(pool), ensurePetConnectSchema(pool)]).then(() => {
   console.log('[Contract database] Schema ready');
   schedulePartnerGeocodeWorker();
   scheduleEmailQueueWorker(0);
@@ -505,6 +506,12 @@ app.get(Object.keys(serviceLandingByPath), async (req, res) => {
 app.get('/quote', async (req, res) => {
   const footer = await getFooter();
   res.render('quote', { footer });
+});
+
+// Worldwide import brokerage request form
+app.get('/import-brokerage', async (req, res) => {
+  const footer = await getFooter();
+  res.render('import-brokerage', { footer });
 });
 
 // Contact
@@ -1456,6 +1463,68 @@ app.post('/api/contact', async (req, res) => {
   }
 });
 
+// ── Worldwide Import Brokerage Submission ─────────────────────────────────
+app.post('/api/import-brokerage', async (req, res) => {
+  const body = req.body || {};
+  const clean = (value, max = 5000) => String(value == null ? '' : value).trim().slice(0, max);
+  const full_name = clean(body.full_name, 160);
+  const email = clean(body.email, 254).toLowerCase();
+  const import_country = clean(body.import_country, 120);
+  const phone = clean(body.phone, 64);
+  const import_city_port = clean(body.import_city_port, 160);
+  const origin_country = clean(body.origin_country, 120);
+  const estimated_arrival_date = clean(body.estimated_arrival_date, 10);
+  const pet_type = clean(body.pet_type, 64);
+  const pet_name = clean(body.pet_name, 160);
+  const breed = clean(body.breed, 160);
+  const microchip = clean(body.microchip, 64);
+  const document_status = clean(body.document_status, 120);
+  const flight_details = clean(body.flight_details, 255);
+  const notes = clean(body.notes, 5000);
+  const requested_services = Array.isArray(body.requested_services)
+    ? body.requested_services.map(value => clean(value, 120)).filter(Boolean).slice(0, 12).join(', ')
+    : clean(body.requested_services, 1000);
+  const pet_count = Math.max(1, Math.min(50, Number.parseInt(body.pet_count, 10) || 1));
+
+  if (body.fax_only || body.email_addr) return res.json({ success: true });
+  if (!full_name || !/^\S+@\S+\.\S+$/.test(email) || !import_country) {
+    return res.status(400).json({ success: false, message: 'Name, valid email, and import country are required.' });
+  }
+  if (estimated_arrival_date && !/^\d{4}-\d{2}-\d{2}$/.test(estimated_arrival_date)) {
+    return res.status(400).json({ success: false, message: 'Enter a valid estimated arrival date.' });
+  }
+  if (!allowPublicForm(req, 'import-brokerage')) return res.status(429).json({ success: false, message: 'Too many requests. Please try again later.' });
+
+  try {
+    await query(`INSERT INTO import_brokerage_requests
+      (full_name, email, phone, import_country, import_city_port, origin_country, estimated_arrival_date,
+       pet_type, pet_name, breed, pet_count, microchip, document_status, flight_details, requested_services, notes)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [full_name, email, phone || null, import_country, import_city_port || null, origin_country || null,
+       estimated_arrival_date || null, pet_type || null, pet_name || null, breed || null, pet_count,
+       microchip || null, document_status || null, flight_details || null, requested_services || null, notes || null]);
+
+    const siteUrl = getSiteUrl();
+    const details = [
+      ['Phone', phone], ['Import country', import_country], ['Import city / port', import_city_port],
+      ['Origin country', origin_country], ['Estimated arrival', estimated_arrival_date],
+      ['Pet', [pet_type, pet_name, breed].filter(Boolean).join(' - ')], ['Pet count', pet_count],
+      ['Microchip', microchip], ['Documents', document_status], ['Flight details', flight_details],
+      ['Requested services', requested_services], ['Notes', notes]
+    ].filter(([, value]) => value);
+    const internal = emailTemplates.internalImportBrokerageNotification({ name: full_name, email, details, siteUrl });
+    const confirmation = emailTemplates.importBrokerageConfirmation({ name: full_name, siteUrl });
+    await Promise.all([
+      queueEmail({ to: 'info@petflyinc.com', subject: internal.subject, html: internal.html, text: internal.text }),
+      queueEmail({ to: email, subject: confirmation.subject, html: confirmation.html, text: confirmation.text })
+    ]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Import brokerage]', err);
+    res.status(500).json({ success: false, message: 'Server error. Please try again.' });
+  }
+});
+
 // ── Admin Auth Routes ──────────────────────────────────────────────────────
 
 app.get('/admin/login', (req, res) => {
@@ -1550,13 +1619,15 @@ function emailTemplatePreview(id) {
     portal_access: ['Client portal access', () => emailTemplates.portalAccess({ loginUrl: url, initialPassword: 'Example-password', siteUrl })],
     internal_quote: ['Internal quote notification', () => emailTemplates.internalQuoteNotification({ name: 'Alex Morgan', email: 'alex@example.com', details: [['Pet', 'Milo'], ['Route', 'Los Angeles to Toronto']], siteUrl })],
     internal_contact: ['Internal contact notification', () => emailTemplates.internalContactNotification({ name: 'Alex Morgan', email: 'alex@example.com', subject: 'Travel question', message: 'Please contact me about my pet relocation.', siteUrl })],
+    import_brokerage_confirmation: ['Import brokerage confirmation', () => emailTemplates.importBrokerageConfirmation({ name: 'Alex Morgan', siteUrl })],
+    internal_import_brokerage: ['Internal import brokerage notification', () => emailTemplates.internalImportBrokerageNotification({ name: 'Alex Morgan', email: 'alex@example.com', details: [['Import country', 'Canada']], siteUrl })],
     smtp_test: ['SMTP delivery test', () => emailTemplates.smtpTest({ siteUrl })]
   };
   return templates[id] || null;
 }
 
 app.get('/api/admin/email-templates', requireAdmin, (req, res) => {
-  const ids = ['quote_confirmation','contact_confirmation','member_verification','contract_signed','finder_message','lost_found_alert','partner_verification','partner_invitation','portal_access','internal_quote','internal_contact','smtp_test'];
+  const ids = ['quote_confirmation','contact_confirmation','member_verification','contract_signed','finder_message','lost_found_alert','partner_verification','partner_invitation','portal_access','internal_quote','internal_contact','import_brokerage_confirmation','internal_import_brokerage','smtp_test'];
   res.json({ templates: ids.map(id => ({ id, label: emailTemplatePreview(id)[0] })) });
 });
 app.get('/api/admin/email-templates/:id/preview', requireAdmin, (req, res) => {
@@ -1611,6 +1682,21 @@ app.get('/api/admin/contacts', requireAdmin, async (req, res) => {
     const contacts = await query('SELECT * FROM contact_messages ORDER BY created_at DESC');
     res.json({ contacts });
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/admin/import-brokerage', requireAdmin, async (req, res) => {
+  try { res.json({ requests: await query('SELECT * FROM import_brokerage_requests ORDER BY created_at DESC') }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.patch('/api/admin/import-brokerage/:id', requireAdmin, async (req, res) => {
+  const { status } = req.body || {};
+  if (!['pending','in_review','quoted','completed','cancelled'].includes(status)) return res.status(400).json({ error: 'Invalid status' });
+  try { await query('UPDATE import_brokerage_requests SET status=?, is_read=TRUE WHERE id=?', [status, req.params.id]); res.json({ success: true }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+app.delete('/api/admin/import-brokerage/:id', requireAdmin, async (req, res) => {
+  try { await query('DELETE FROM import_brokerage_requests WHERE id=?', [req.params.id]); res.json({ success: true }); }
+  catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.patch('/api/admin/contacts/:id', requireAdmin, async (req, res) => {

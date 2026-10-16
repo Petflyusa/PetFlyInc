@@ -37,6 +37,10 @@
         <i class="fas fa-envelope"></i> Contact Messages
         <span class="badge" id="badgeContacts">0</span>
       </button>
+      <button class="nav-btn" data-section="import-brokerage" onclick="showSection('import-brokerage')">
+        <i class="fas fa-globe"></i> Import Brokerage
+        <span class="badge" id="badgeImportBrokerage">0</span>
+      </button>
       <button class="nav-btn" data-section="analytics" onclick="showSection('analytics')">
         <i class="fas fa-chart-line"></i> Visitor Analytics
       </button>
@@ -135,6 +139,11 @@
         <button class="btn-outline" onclick="loadContacts()"><i class="fas fa-sync"></i> Refresh</button>
       </div>
       <div id="contactsTable"></div>
+    </section>
+
+    <section id="section-import-brokerage" class="admin-section">
+      <div class="section-header"><h1>Import Brokerage Requests</h1><button class="btn-outline" onclick="loadImportBrokerage()"><i class="fas fa-sync"></i> Refresh</button></div>
+      <div id="importBrokerageTable"></div>
     </section>
 
     <section id="section-analytics" class="admin-section">
