@@ -23,6 +23,7 @@
       'nav.regulations': 'Regulations',
       'nav.contact': 'Contact',
       'nav.clientLogin': 'Client Login',
+      'nav.importBrokerage': 'Import Brokerage',
       'language.label': 'Language',
       'language.english': 'English',
       'language.spanish': 'Spanish',
@@ -38,6 +39,7 @@
       'nav.regulations': 'Regulaciones',
       'nav.contact': 'Contacto',
       'nav.clientLogin': 'Acceso de cliente',
+      'nav.importBrokerage': 'Gestión de importación',
       'language.label': 'Idioma',
       'language.english': 'Ingles',
       'language.spanish': 'Espanol',
@@ -53,6 +55,7 @@
       'nav.regulations': '法规',
       'nav.contact': '联系我们',
       'nav.clientLogin': '客户登录',
+      'nav.importBrokerage': '进口代理',
       'language.label': '语言',
       'language.english': '英语',
       'language.spanish': '西班牙语',
@@ -131,6 +134,32 @@
     }
   };
 
+  // Shared public-page copy. Keeping this map literal-based lets legacy EJS
+  // content and database-managed text participate in the same language switch.
+  Object.assign(literalTranslations.es, {
+    'Import Brokerage':'Gestión de importación', 'Navigate':'Navegación', 'View Site':'Ver sitio',
+    'Scroll':'Desplazar', 'About':'Acerca de nosotros', 'Customer Stories':'Historias de clientes', 'Trusted with every journey.':'La confianza en cada viaje.',
+    'Simple steps to global peace of mind':'Pasos sencillos para viajar con tranquilidad', 'Initial assessment & route planning':'Evaluación inicial y planificación de ruta', 'Documentation preparation & review':'Preparación y revisión de documentos', 'Container consultation & delivery':'Asesoría y entrega del contenedor', 'Airport handling & customs clearance':'Gestión aeroportuaria y despacho aduanero', 'Door-to-door delivery at destination':'Entrega puerta a puerta en el destino',
+    'Services crafted':'Servicios diseñados', 'for every journey.':'para cada viaje.', 'From solo travelers to entire families of animals — we handle international pet transport with precision and genuine care.':'Desde viajeros individuales hasta familias enteras de animales, gestionamos el transporte internacional con precisión y verdadero cuidado.',
+    'Complete door-to-door relocation service covering 15+ countries. We manage the entire process — from pickup at your door to final delivery at the destination.':'Servicio completo puerta a puerta en más de 15 países. Gestionamos todo el proceso, desde la recogida hasta la entrega final.', 'Health certificate preparation & vet coordination':'Preparación del certificado sanitario y coordinación veterinaria', 'Import permit applications':'Solicitudes de permisos de importación', 'Microchip & vaccination record management':'Gestión de microchip y vacunas', 'Customs clearance assistance':'Asistencia con el despacho aduanero',
+    'Professional sizing consultation':'Asesoría profesional de medidas', 'ISO-standard containers available':'Contenedores con estándar ISO disponibles', 'Ventilation and temperature management':'Gestión de ventilación y temperatura', 'Water dishes and absorbent bedding included':'Incluye recipientes de agua y cama absorbente', 'Delivery to your door before travel':'Entrega en su domicilio antes del viaje',
+    'Partner-program documentation guidance':'Orientación sobre documentos del programa asociado', 'Airline and destination requirement review':'Revisión de requisitos de aerolínea y destino', 'Travel planning for an assistance-dog team':'Planificación de viaje para equipos con perros de asistencia', 'Clear distinction between program records and legal requirements':'Distinción clara entre registros del programa y requisitos legales',
+    'Worldwide destination support':'Asistencia para destinos de todo el mundo', 'Local delivery coordination':'Coordinación de entrega local', 'Full Insurance':'Seguro completo', 'Comprehensive transit coverage for all shipments':'Cobertura integral durante el tránsito de todos los envíos', 'IATA Certified':'Certificado por IATA', 'USDA Accredited':'Acreditado por USDA',
+    'Select':'Seleccionar', 'Dog':'Perro', 'Cat':'Gato', 'Bird':'Ave', 'Rabbit':'Conejo', 'Other':'Otro', 'Male':'Macho', 'Female':'Hembra', 'Color':'Color', 'Gender':'Sexo', 'Travel Date':'Fecha de viaje', 'Pickup & Delivery Service':'Servicio de recogida y entrega', 'Pickup Address':'Dirección de recogida', 'Delivery Address':'Dirección de entrega', 'Color':'Color',
+    'Message *':'Mensaje *', 'Phone':'Teléfono', 'Select destination country':'Seleccionar país de destino', 'Documents ready':'Documentos listos', 'Some documents ready':'Algunos documentos listos', 'Documents not started':'Documentos no iniciados', 'Not sure what is required':'No sé qué se requiere', 'Other / not listed':'Otro / no aparece en la lista', 'Flight details':'Detalles del vuelo', 'Air waybill (AWB) number':'Número de guía aérea (AWB)', 'Send import brokerage request':'Enviar solicitud de gestión de importación', 'We’ll be in touch within 24 hours.':'Nos pondremos en contacto en 24 horas.'
+  });
+  Object.assign(literalTranslations.zh, {
+    'Import Brokerage':'进口代理', 'Navigate':'导航', 'View Site':'查看网站',
+    'Scroll':'滚动', 'About':'关于我们', 'Customer Stories':'客户故事', 'Trusted with every journey.':'每段旅程都值得信赖。',
+    'Simple steps to global peace of mind':'轻松获得全球安心的步骤', 'Initial assessment & route planning':'初步评估与路线规划', 'Documentation preparation & review':'文件准备与审核', 'Container consultation & delivery':'运输箱咨询与配送', 'Airport handling & customs clearance':'机场操作与海关清关', 'Door-to-door delivery at destination':'目的地门到门配送',
+    'Services crafted':'为每段旅程打造的', 'for every journey.':'专业服务。', 'From solo travelers to entire families of animals — we handle international pet transport with precision and genuine care.':'无论是单只宠物还是完整的动物家庭，我们都以精准和真诚的关怀处理国际宠物运输。',
+    'Complete door-to-door relocation service covering 15+ countries. We manage the entire process — from pickup at your door to final delivery at the destination.':'覆盖15多个国家的完整门到门搬迁服务。我们管理从上门接送到目的地最终交付的全过程。', 'Health certificate preparation & vet coordination':'健康证明准备与兽医协调', 'Import permit applications':'进口许可申请', 'Microchip & vaccination record management':'芯片与疫苗记录管理', 'Customs clearance assistance':'海关清关协助',
+    'Professional sizing consultation':'专业尺寸咨询', 'ISO-standard containers available':'提供ISO标准运输箱', 'Ventilation and temperature management':'通风与温度管理', 'Water dishes and absorbent bedding included':'包含饮水器和吸水垫料', 'Delivery to your door before travel':'旅行前送到您的家门口',
+    'Partner-program documentation guidance':'合作项目文件指导', 'Airline and destination requirement review':'航空公司与目的地要求审核', 'Travel planning for an assistance-dog team':'辅助犬团队旅行规划', 'Clear distinction between program records and legal requirements':'清楚区分项目记录与法律要求',
+    'Worldwide destination support':'全球目的地支持', 'Local delivery coordination':'当地配送协调', 'Full Insurance':'全程保险', 'Comprehensive transit coverage for all shipments':'所有运输的全面途中保障', 'IATA Certified':'IATA认证', 'USDA Accredited':'USDA认可',
+    'Select':'选择', 'Dog':'狗', 'Cat':'猫', 'Bird':'鸟', 'Rabbit':'兔子', 'Other':'其他', 'Male':'公', 'Female':'母', 'Color':'颜色', 'Gender':'性别', 'Travel Date':'旅行日期', 'Pickup & Delivery Service':'接送服务', 'Pickup Address':'接送地址', 'Delivery Address':'送达地址', 'Message *':'消息 *', 'Phone':'电话', 'Select destination country':'选择目的地国家', 'Documents ready':'文件已准备', 'Some documents ready':'部分文件已准备', 'Documents not started':'文件尚未开始', 'Not sure what is required':'不确定需要哪些文件', 'Other / not listed':'其他 / 未列出', 'Flight details':'航班详情', 'Air waybill (AWB) number':'航空运单（AWB）号码', 'Send import brokerage request':'发送进口代理申请', 'We’ll be in touch within 24 hours.':'我们将在24小时内联系您。'
+  });
+
   function normalizeLanguage(value) {
     var prefix = String(value || '').toLowerCase().split('-')[0];
     return prefix === 'en' || prefix === 'es' || prefix === 'zh' ? prefix : null;
@@ -170,7 +199,7 @@
     nodes.forEach(function (node) {
       var parent = node.parentElement;
       var source = originalText && originalText.get(node) || node.nodeValue.trim();
-      if (!source || !parent || /^(SCRIPT|STYLE|TEXTAREA|OPTION)$/i.test(parent.tagName)) return;
+      if (!source || !parent || /^(SCRIPT|STYLE)$/i.test(parent.tagName)) return;
       if (originalText) originalText.set(node, source);
       var translated = translateLiteral(language, source);
       if (translated !== source) node.nodeValue = node.nodeValue.replace(source, translated);
