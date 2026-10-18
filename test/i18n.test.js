@@ -92,6 +92,8 @@ test('translates complete legacy text and form attributes, not only exact phrase
   assert.equal(i18n.translateText('es', 'Request a Quote'), 'Solicitar una cotización');
   assert.equal(i18n.translateText('zh', 'Air waybill (AWB) number'), '航空运单（AWB）号码');
   assert.equal(i18n.translateText('es', 'Mochi'), 'Mochi');
+  assert.equal(i18n.translateText('zh', 'A free community network that helps reunite lost pets with their families through private microchip contact, local alerts, and trusted partner support.'), '免费的社区网络，通过私密芯片联系、本地警报和可信合作伙伴支持，帮助走失宠物与家人团聚。');
+  assert.equal(i18n.translateText('zh', 'All rights reserved.'), '版权所有。');
 });
 
 test('translates contract legal text and explains that English controls the agreement', () => {
