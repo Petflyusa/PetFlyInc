@@ -147,6 +147,7 @@
     'Worldwide destination support':'Asistencia para destinos de todo el mundo', 'Local delivery coordination':'Coordinación de entrega local', 'Full Insurance':'Seguro completo', 'Comprehensive transit coverage for all shipments':'Cobertura integral durante el tránsito de todos los envíos', 'IATA Certified':'Certificado por IATA', 'USDA Accredited':'Acreditado por USDA',
     'Select':'Seleccionar', 'Dog':'Perro', 'Cat':'Gato', 'Bird':'Ave', 'Rabbit':'Conejo', 'Other':'Otro', 'Male':'Macho', 'Female':'Hembra', 'Color':'Color', 'Gender':'Sexo', 'Travel Date':'Fecha de viaje', 'Pickup & Delivery Service':'Servicio de recogida y entrega', 'Pickup Address':'Dirección de recogida', 'Delivery Address':'Dirección de entrega', 'Color':'Color',
     'Message *':'Mensaje *', 'Phone':'Teléfono', 'Select destination country':'Seleccionar país de destino', 'Documents ready':'Documentos listos', 'Some documents ready':'Algunos documentos listos', 'Documents not started':'Documentos no iniciados', 'Not sure what is required':'No sé qué se requiere', 'Other / not listed':'Otro / no aparece en la lista', 'Flight details':'Detalles del vuelo', 'Air waybill (AWB) number':'Número de guía aérea (AWB)', 'Send import brokerage request':'Enviar solicitud de gestión de importación', 'We’ll be in touch within 24 hours.':'Nos pondremos en contacto en 24 horas.'
+    , 'Whether you have a question, need a quote, or want to discuss your pet\'s specific requirements — our team is here to help.':'Si tienes una pregunta, necesitas una cotización o quieres hablar sobre las necesidades específicas de tu mascota, estamos aquí para ayudarte.', 'For existing shipments requiring urgent assistance outside business hours':'Para envíos existentes que necesiten asistencia urgente fuera del horario laboral', 'We\'ll be in touch within 24 hours.':'Nos pondremos en contacto en 24 horas.'
   });
   Object.assign(literalTranslations.zh, {
     'Import Brokerage':'进口代理', 'Navigate':'导航', 'View Site':'查看网站',
@@ -158,6 +159,7 @@
     'Partner-program documentation guidance':'合作项目文件指导', 'Airline and destination requirement review':'航空公司与目的地要求审核', 'Travel planning for an assistance-dog team':'辅助犬团队旅行规划', 'Clear distinction between program records and legal requirements':'清楚区分项目记录与法律要求',
     'Worldwide destination support':'全球目的地支持', 'Local delivery coordination':'当地配送协调', 'Full Insurance':'全程保险', 'Comprehensive transit coverage for all shipments':'所有运输的全面途中保障', 'IATA Certified':'IATA认证', 'USDA Accredited':'USDA认可',
     'Select':'选择', 'Dog':'狗', 'Cat':'猫', 'Bird':'鸟', 'Rabbit':'兔子', 'Other':'其他', 'Male':'公', 'Female':'母', 'Color':'颜色', 'Gender':'性别', 'Travel Date':'旅行日期', 'Pickup & Delivery Service':'接送服务', 'Pickup Address':'接送地址', 'Delivery Address':'送达地址', 'Message *':'消息 *', 'Phone':'电话', 'Select destination country':'选择目的地国家', 'Documents ready':'文件已准备', 'Some documents ready':'部分文件已准备', 'Documents not started':'文件尚未开始', 'Not sure what is required':'不确定需要哪些文件', 'Other / not listed':'其他 / 未列出', 'Flight details':'航班详情', 'Air waybill (AWB) number':'航空运单（AWB）号码', 'Send import brokerage request':'发送进口代理申请', 'We’ll be in touch within 24 hours.':'我们将在24小时内联系您。'
+    , 'Whether you have a question, need a quote, or want to discuss your pet\'s specific requirements — our team is here to help.':'如果您有问题、需要报价，或想讨论宠物的具体需求，我们随时为您提供帮助。', 'For existing shipments requiring urgent assistance outside business hours':'为现有运输在工作时间之外提供紧急协助', 'We\'ll be in touch within 24 hours.':'我们将在24小时内联系您。'
   });
 
   function normalizeLanguage(value) {
@@ -191,6 +193,18 @@
     return (literalTranslations[selected] && literalTranslations[selected][value]) || value;
   }
 
+  function translateText(language, value) {
+    var selected = normalizeLanguage(language) || 'en';
+    var source = String(value == null ? '' : value);
+    if (selected === 'en' || !source) return source;
+    var map = literalTranslations[selected] || {};
+    Object.keys(map).sort(function (a, b) { return b.length - a.length; }).forEach(function (phrase) {
+      if (!phrase || phrase.length < 2 || source.indexOf(phrase) === -1) return;
+      source = source.split(phrase).join(map[phrase]);
+    });
+    return source;
+  }
+
   function translateTextNodes(root, language) {
     if (!root || !global || !global.document || !global.document.createTreeWalker) return;
     var walker = global.document.createTreeWalker(root, 4);
@@ -201,7 +215,7 @@
       var source = originalText && originalText.get(node) || node.nodeValue.trim();
       if (!source || !parent || /^(SCRIPT|STYLE)$/i.test(parent.tagName)) return;
       if (originalText) originalText.set(node, source);
-      var translated = translateLiteral(language, source);
+      var translated = translateText(language, source);
       if (translated !== source) node.nodeValue = node.nodeValue.replace(source, translated);
     });
   }
@@ -249,6 +263,15 @@
         }
       });
     });
+    // Legacy pages use plain placeholders and labels. Translate these literal
+    // attributes too, while key-based attributes above remain authoritative.
+    root.querySelectorAll('[placeholder], [title]').forEach(function (element) {
+      ['placeholder', 'title'].forEach(function (attribute) {
+        if (element.hasAttribute(attribute) && !element.hasAttribute('data-i18n-' + attribute)) {
+          element.setAttribute(attribute, translateText(selectedLanguage, element.getAttribute(attribute)));
+        }
+      });
+    });
     translateTextNodes(root, selectedLanguage);
   }
 
@@ -292,6 +315,7 @@
     resolveLanguage: resolveLanguage,
     translate: translate,
     translateLiteral: translateLiteral,
+    translateText: translateText,
     getLanguage: getLanguage,
     setLanguage: setLanguage,
     apply: apply,

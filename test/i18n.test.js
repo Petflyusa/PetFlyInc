@@ -88,6 +88,12 @@ test('translates known client interface phrases without changing unknown saved c
   assert.equal(i18n.translateLiteral('es', 'Mochi'), 'Mochi');
 });
 
+test('translates complete legacy text and form attributes, not only exact phrases', () => {
+  assert.equal(i18n.translateText('es', 'Request a Quote'), 'Solicitar una cotización');
+  assert.equal(i18n.translateText('zh', 'Air waybill (AWB) number'), '航空运单（AWB）号码');
+  assert.equal(i18n.translateText('es', 'Mochi'), 'Mochi');
+});
+
 test('translates contract legal text and explains that English controls the agreement', () => {
   const fs = require('node:fs');
   const path = require('node:path');
