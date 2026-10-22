@@ -71,6 +71,7 @@ const smtpConfig = {
     pass: process.env.SMTP_PASS || '',
   },
 };
+const notificationEmail = process.env.NOTIFICATION_EMAIL || 'info@petflyinc.com';
 const mailTransporter = nodemailer.createTransport(smtpConfig);
 let lastEmailDeliveryError = null;
 
@@ -1433,7 +1434,7 @@ app.post('/api/quote', async (req, res) => {
     });
     const confirmation = emailTemplates.quoteConfirmation({ name: contact_name, siteUrl });
     await Promise.all([
-      queueEmail({ to: 'info@petflyinc.com', subject: internal.subject, html: internal.html, text: internal.text }),
+      queueEmail({ to: notificationEmail, subject: internal.subject, html: internal.html, text: internal.text }),
       queueEmail({ to: email, subject: confirmation.subject, html: confirmation.html, text: confirmation.text })
     ]);
 
@@ -1461,7 +1462,7 @@ app.post('/api/contact', async (req, res) => {
     const internal = emailTemplates.internalContactNotification({ name, email, subject, message: [phone && `Phone: ${phone}`, message].filter(Boolean).join('\n'), siteUrl });
     const confirmation = emailTemplates.contactConfirmation({ name, siteUrl });
     await Promise.all([
-      queueEmail({ to: 'info@petflyinc.com', subject: internal.subject, html: internal.html, text: internal.text }),
+      queueEmail({ to: notificationEmail, subject: internal.subject, html: internal.html, text: internal.text }),
       queueEmail({ to: email, subject: confirmation.subject, html: confirmation.html, text: confirmation.text })
     ]);
 
@@ -1526,7 +1527,7 @@ app.post('/api/import-brokerage', async (req, res) => {
     const internal = emailTemplates.internalImportBrokerageNotification({ name: full_name, email, details, siteUrl });
     const confirmation = emailTemplates.importBrokerageConfirmation({ name: full_name, siteUrl });
     await Promise.all([
-      queueEmail({ to: 'info@petflyinc.com', subject: internal.subject, html: internal.html, text: internal.text }),
+      queueEmail({ to: notificationEmail, subject: internal.subject, html: internal.html, text: internal.text }),
       queueEmail({ to: email, subject: confirmation.subject, html: confirmation.html, text: confirmation.text })
     ]);
     res.json({ success: true });
